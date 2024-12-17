@@ -26,9 +26,8 @@ static/cache/*
 *.swn
 .DS_Store
 
-# Binary files
-/CineSeer
-/med_disc
+# folders
+tmp/
 
 # Go workspace file
 go.work
