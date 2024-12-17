@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -14,7 +15,7 @@ import (
 
 type PageData struct {
 	Series          []SimplifiedSeries
-	UpcomingSeries  []SimplifiedUpcomingSeries
+	UpcomingSeries  []SimplifiedSeries
 }
 
 type WebAPIResponse struct {
@@ -74,18 +75,32 @@ func main() {
 	// API endpoints for data with caching
 	app.Get("/api/series", apiCache, func(c *fiber.Ctx) error {
 		log.Printf("Received request for /api/series from %s", c.IP())
-		series, err := GetSeriesData()
+		allSeries, err := GetSeriesData()
 		if err != nil {
 			log.Printf("Error getting series data: %v", err)
 			return c.Status(500).JSON(WebAPIResponse{
 				Error: err.Error(),
 			})
 		}
+
+		// Filter for series with firstAired <= today
+		var currentSeries []SimplifiedSeries
+		today := time.Now()
+		for _, series := range allSeries {
+			firstAired, err := time.Parse("2006-01-02", series.FirstAired)
+			if err != nil {
+				continue
+			}
+			if !firstAired.After(today) {
+				currentSeries = append(currentSeries, series)
+			}
+		}
 		
 		// Transform image URLs to use cached versions
 		transformed, err := transformImageURLs(
-			series,
+			currentSeries,
 			func(s SimplifiedSeries) string { return s.Image },
+			func(s SimplifiedSeries) int { return s.ID },
 			func(s SimplifiedSeries, url string) SimplifiedSeries {
 				s.Image = url
 				return s
@@ -94,7 +109,7 @@ func main() {
 		if err != nil {
 			log.Printf("Error transforming image URLs: %v", err)
 			// Continue with original series data if transformation fails
-			transformed = series
+			transformed = currentSeries
 		}
 		
 		log.Printf("Successfully fetched and transformed %d series", len(transformed))
@@ -113,19 +128,35 @@ func main() {
 
 	app.Get("/api/upcoming-series", apiCache, func(c *fiber.Ctx) error {
 		log.Printf("Received request for /api/upcoming-series from %s", c.IP())
-		upcomingSeries, err := GetUpcomingSeriesData()
+		allSeries, err := GetSeriesData()
 		if err != nil {
 			log.Printf("Error getting upcoming series data: %v", err)
 			return c.Status(500).JSON(WebAPIResponse{
 				Error: err.Error(),
 			})
 		}
+
+		// Filter for series with firstAired > today and valid image URL
+		var upcomingSeries []SimplifiedSeries
+		today := time.Now()
+		for _, series := range allSeries {
+			firstAired, err := time.Parse("2006-01-02", series.FirstAired)
+			if err != nil {
+				continue
+			}
+			// Check if series is upcoming and has a valid image URL
+			hasValidImage := series.Image != "" && strings.HasPrefix(series.Image, "https://")
+			if firstAired.After(today) && hasValidImage {
+				upcomingSeries = append(upcomingSeries, series)
+			}
+		}
 		
 		// Transform image URLs to use cached versions
 		transformed, err := transformImageURLs(
 			upcomingSeries,
-			func(s SimplifiedUpcomingSeries) string { return s.Image },
-			func(s SimplifiedUpcomingSeries, url string) SimplifiedUpcomingSeries {
+			func(s SimplifiedSeries) string { return s.Image },
+			func(s SimplifiedSeries) int { return s.ID },
+			func(s SimplifiedSeries, url string) SimplifiedSeries {
 				s.Image = url
 				return s
 			},
@@ -156,7 +187,7 @@ func main() {
 		return c.Render("index", fiber.Map{})
 	})
 
-	log.Printf("Server starting on http://localhost:3001")
-	// Start server on port 3001
-	log.Fatal(app.Listen(":3001"))
+	log.Printf("Server starting on http://localhost:3002")
+	// Start server on port 3002
+	log.Fatal(app.Listen(":3002"))
 }

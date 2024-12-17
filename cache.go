@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"log"
@@ -18,13 +17,13 @@ const (
 
 // getCachedImageURL returns the local URL for a cached image
 // If the image isn't cached, it downloads and caches it first
-func getCachedImageURL(originalURL string) (string, error) {
+func getCachedImageURL(originalURL string, seriesID int) (string, error) {
 	if originalURL == "" {
 		return "", fmt.Errorf("empty image URL")
 	}
 
-	// Generate a unique filename based on the URL
-	filename := generateCacheFilename(originalURL)
+	// Generate a unique filename based on the series ID
+	filename := generateCacheFilename(originalURL, seriesID)
 	cachePath := filepath.Join(CacheDir, filename)
 
 	// Check if the file exists in cache
@@ -39,17 +38,15 @@ func getCachedImageURL(originalURL string) (string, error) {
 	return fmt.Sprintf("%s/%s", CacheBaseURL, filename), nil
 }
 
-// generateCacheFilename creates a unique filename for the cached image
-func generateCacheFilename(url string) string {
+// generateCacheFilename creates a unique filename for the cached image using series ID
+func generateCacheFilename(url string, seriesID int) string {
 	// Extract file extension from URL
 	ext := filepath.Ext(url)
 	if ext == "" {
 		ext = ".jpg" // Default to .jpg if no extension found
 	}
 
-	// Generate hash of URL for unique filename
-	hash := sha256.Sum256([]byte(url))
-	return fmt.Sprintf("%x%s", hash[:8], ext) // Use first 8 bytes of hash
+	return fmt.Sprintf("%d-poster%s", seriesID, ext)
 }
 
 // downloadAndCacheImage downloads an image from the URL and saves it to the cache
@@ -103,12 +100,12 @@ func downloadAndCacheImage(url, cachePath string) error {
 }
 
 // transformImageURLs modifies the Image URLs in a slice of series to use cached versions
-func transformImageURLs[T any](series []T, getImageURL func(T) string, setImageURL func(T, string) T) ([]T, error) {
+func transformImageURLs[T any](series []T, getImageURL func(T) string, getSeriesID func(T) int, setImageURL func(T, string) T) ([]T, error) {
 	transformed := make([]T, len(series))
 	for i, s := range series {
 		originalURL := getImageURL(s)
 		if originalURL != "" {
-			cachedURL, err := getCachedImageURL(originalURL)
+			cachedURL, err := getCachedImageURL(originalURL, getSeriesID(s))
 			if err != nil {
 				log.Printf("Warning: Failed to cache image for series: %v", err)
 				// Use original URL as fallback

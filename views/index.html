@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineGet</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: clamp(0.5rem, 3vw, 2rem);
+        }
+
+        h1, h2 {
+            margin-bottom: clamp(1rem, 4vw, 2rem);
+            text-align: left;
+            color: #f8fafc;
+            font-size: clamp(1.25rem, 4vw, 2rem);
+        }
+
+        h2 {
+            margin-top: clamp(2rem, 6vw, 3rem);
+            font-size: clamp(1.1rem, 3.5vw, 1.75rem);
+        }
+
+        .series-container {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: clamp(180px, 45vw, 17rem);
+            gap: clamp(0.5rem, 2vw, 1.5rem);
+            overflow-x: auto;
+            padding: clamp(0.5rem, 2vw, 1rem);
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            -webkit-overflow-scrolling: touch;
+            min-height: 280px; /* Prevent layout shift */
+        }
+
+        .series-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .series-card {
+            position: relative;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            scroll-snap-align: start;
+            background: #1e293b;
+            transition: transform 0.2s;
+            aspect-ratio: 3/4;
+            height: auto;
+            max-height: clamp(280px, 60vh, 400px);
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 280px;
+            color: #94a3b8;
+        }
+
+        .error {
+            color: #ef4444;
+            padding: 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        @media (hover: hover) {
+            .series-card:hover {
+                transform: translateY(-5px);
+            }
+
+            .series-card:hover .series-info {
+                transform: translateY(0);
+            }
+
+            .series-card:hover .series-image {
+                opacity: 0.7;
+            }
+        }
+
+        .series-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.3s;
+        }
+
+        .series-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: clamp(0.5rem, 2vw, 1rem);
+            background: rgba(15, 23, 42, 0.9);
+            transform: translateY(100%);
+            transition: transform 0.3s;
+        }
+
+        @media (max-width: 768px) {
+            .series-info {
+                background: rgba(15, 23, 42, 0.95);
+            }
+
+            .series-overview {
+                -webkit-line-clamp: 2;
+            }
+
+            .series-card.active .series-info {
+                transform: translateY(0);
+            }
+
+            .series-card.active .series-image {
+                opacity: 0.7;
+            }
+        }
+
+        .series-title {
+            font-size: clamp(0.875rem, 2.5vw, 1.25rem);
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+            color: #f8fafc;
+        }
+
+        .series-year {
+            font-size: clamp(0.75rem, 1.8vw, 0.875rem);
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+        }
+
+        .series-overview {
+            font-size: clamp(0.75rem, 1.8vw, 0.875rem);
+            color: #cbd5e1;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .series-date {
+            font-size: clamp(0.75rem, 1.8vw, 0.875rem);
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>New TV Series</h1>
+    
+    <div id="new-series" class="series-container">
+        <div class="loading">Loading...</div>
+    </div>
+
+    <h2>Upcoming TV Series</h2>
+    
+    <div id="upcoming-series" class="series-container">
+        <div class="loading">Loading...</div>
+    </div>
+
+    <script>
+        // Get the base URL path for making relative requests
+        const getBasePath = () => {
+            const pathname = window.location.pathname;
+            return pathname === '/' ? '' : pathname;
+        };
+
+        // Function to ensure image URLs are properly constructed
+        const getImageUrl = (imageUrl) => {
+            if (!imageUrl) return '';
+            const cleanImageUrl = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
+            return cleanImageUrl;
+        };
+
+        // Render functions
+        function renderSeries(container, series) {
+            if (!Array.isArray(series)) {
+                console.error('Invalid series data:', series);
+                showError(container, 'Invalid data format');
+                return;
+            }
+
+            const isUpcoming = container.id === 'upcoming-series';
+
+            container.innerHTML = series.map(show => {
+                const imageUrl = getImageUrl(show.image);
+                console.log('Rendering series with image URL:', imageUrl);
+
+                return `
+                    <div class="series-card">
+                        <img class="series-image" src="${imageUrl}" alt="${show.name || 'TV Series'}" loading="lazy" onerror="this.style.display='none'">
+                        <div class="series-info">
+                            <div class="series-title">${show.name || 'Untitled'}</div>
+                            <div class="series-year">${show.year || 'TBA'}</div>
+                            ${isUpcoming && show.firstAired ? `<div class="series-date">Premieres: ${show.firstAired}</div>` : ''}
+                            <div class="series-overview">${show.overview || 'No overview available.'}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showError(container, message) {
+            console.error('Error:', message);
+            container.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // Data fetching with proper URL handling for proxy support
+        async function fetchData(endpoint, container) {
+            try {
+                const basePath = getBasePath();
+                const url = `${basePath}/api${endpoint}`;
+                console.log('Fetching from URL:', url);
+                
+                const response = await fetch(url);
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const jsonResponse = await response.json();
+                console.log('API Response:', jsonResponse);
+                
+                if (jsonResponse.error) {
+                    throw new Error(jsonResponse.error);
+                }
+                
+                if (!jsonResponse.data) {
+                    throw new Error('No data in response');
+                }
+
+                renderSeries(container, jsonResponse.data);
+            } catch (error) {
+                console.error('Fetch error:', error);
+                showError(container, `Error loading data: ${error.message}`);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Content Loaded, initializing app...');
+            const newSeriesContainer = document.getElementById('new-series');
+            const upcomingSeriesContainer = document.getElementById('upcoming-series');
+
+            // Log the base path for debugging
+            const basePath = getBasePath();
+            console.log('Base path for requests:', basePath);
+
+            // Fetch data with relative endpoints
+            console.log('Starting data fetches...');
+            fetchData('/series', newSeriesContainer);
+            fetchData('/upcoming-series', upcomingSeriesContainer);
+
+            // Mobile touch handling
+            if (window.matchMedia('(max-width: 768px)').matches) {
+                document.addEventListener('click', function(e) {
+                    const card = e.target.closest('.series-card');
+                    if (card) {
+                        // Remove active class from all other cards
+                        document.querySelectorAll('.series-card').forEach(c => {
+                            if (c !== card) c.classList.remove('active');
+                        });
+                        // Toggle active class on clicked card
+                        card.classList.toggle('active');
+                    } else {
+                        // Close all cards when clicking outside
+                        document.querySelectorAll('.series-card').forEach(c => 
+                            c.classList.remove('active')
+                        );
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

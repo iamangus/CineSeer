@@ -16,28 +16,29 @@ import (
 )
 
 const (
-	UpcomingBaseURL = "https://api4.thetvdb.com/v4"
+	BaseURL = "https://api4.thetvdb.com/v4"
 	// Change this endpoint to query different resources
-	UpcomingEndpoint = "series/filter?country=usa&lang=eng&sort=firstAired&sortType=desc"
+	Endpoint = "series/filter?country=usa&lang=eng&sort=firstAired&sortType=desc"
 )
 
-var UpcomingMinScore = 500 // Minimum score threshold for displaying series
+var MinScore = 2000 // Minimum score threshold for displaying series
 
-type UpcomingLoginResponse struct {
-	Status  string          `json:"status"`
-	Data    UpcomingData   `json:"data"`
-	Message string         `json:"message"`
+type LoginResponse struct {
+	Status  string `json:"status"`
+	Data    Data   `json:"data"`
+	Message string `json:"message"`
 }
 
-type UpcomingData struct {
+type Data struct {
 	Token string `json:"token"`
 }
 
-type UpcomingAPIResponse struct {
-	Data []UpcomingSeries `json:"data"`
+type APIResponse struct {
+	Data []Series `json:"data"`
 }
 
-type UpcomingSeries struct {
+type Series struct {
+	ID         int    `json:"id"`
 	Name       string `json:"name"`
 	Year       string `json:"year"`
 	Overview   string `json:"overview"`
@@ -46,7 +47,8 @@ type UpcomingSeries struct {
 	FirstAired string `json:"firstAired"`
 }
 
-type SimplifiedUpcomingSeries struct {
+type SimplifiedSeries struct {
+	ID         int    `json:"id"`
 	Name       string `json:"name"`
 	Year       string `json:"year"`
 	Score      int    `json:"score"`
@@ -55,7 +57,7 @@ type SimplifiedUpcomingSeries struct {
 	FirstAired string `json:"firstAired"`
 }
 
-func GetUpcomingSeriesData() ([]SimplifiedUpcomingSeries, error) {
+func GetSeriesData() ([]SimplifiedSeries, error) {
 	// Load .env file
 	if err := godotenv.Load(); err != nil {
 		return nil, fmt.Errorf("error loading .env file: %v", err)
@@ -67,43 +69,37 @@ func GetUpcomingSeriesData() ([]SimplifiedUpcomingSeries, error) {
 	}
 
 	// Login to get bearer token
-	token, err := loginUpcoming(apiKey)
+	token, err := login(apiKey)
 	if err != nil {
 		return nil, fmt.Errorf("login failed: %v", err)
 	}
 
 	// Make API call using the token
-	response, err := makeUpcomingAuthenticatedRequest(token, UpcomingEndpoint)
+	response, err := makeAuthenticatedRequest(token, Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %v", err)
 	}
 
-	var apiResp UpcomingAPIResponse
+	var apiResp APIResponse
 	if err := json.Unmarshal([]byte(response), &apiResp); err != nil {
 		return nil, fmt.Errorf("error parsing JSON: %v", err)
 	}
 
-	// Filter series based on MinScore, FirstAired date, and valid image URL
-	var simplified []SimplifiedUpcomingSeries
-	today := time.Now()
+	// Filter series based on MinScore only, not on FirstAired date
+	var simplified []SimplifiedSeries
 	for _, series := range apiResp.Data {
-		firstAired, err := time.Parse("2006-01-02", series.FirstAired)
-		if err != nil {
-			log.Printf("Skipping series '%s' due to invalid date: %s", series.Name, series.FirstAired)
-			continue // Skip series with invalid dates
-		}
-		
 		// Check for valid image URL (not empty and starts with https://)
 		hasValidImage := series.Image != "" && strings.HasPrefix(series.Image, "https://")
 		if !hasValidImage {
 			log.Printf("Skipping series '%s' due to invalid image URL: %s", series.Name, series.Image)
 			continue
 		}
-		
-		// Only include series with FirstAired date after today, valid score, and valid image
-		if series.Score >= UpcomingMinScore && firstAired.After(today) {
-			log.Printf("Adding upcoming series '%s' with image URL: %s", series.Name, series.Image)
-			simplified = append(simplified, SimplifiedUpcomingSeries{
+
+		// Only filter by score, not by date
+		if series.Score >= MinScore {
+			log.Printf("Adding series '%s' with image URL: %s", series.Name, series.Image)
+			simplified = append(simplified, SimplifiedSeries{
+				ID:         series.ID,
 				Name:       series.Name,
 				Year:       series.Year,
 				Score:      series.Score,
@@ -114,18 +110,18 @@ func GetUpcomingSeriesData() ([]SimplifiedUpcomingSeries, error) {
 		}
 	}
 
-	// Sort simplified series by FirstAired (soonest to latest)
+	// Sort simplified series by FirstAired (newest to oldest)
 	sort.Slice(simplified, func(i, j int) bool {
 		date1, _ := time.Parse("2006-01-02", simplified[i].FirstAired)
 		date2, _ := time.Parse("2006-01-02", simplified[j].FirstAired)
-		return date1.Before(date2)
+		return date2.Before(date1)
 	})
 
-	log.Printf("Returning %d upcoming series with valid images", len(simplified))
+	log.Printf("Returning %d series with valid images", len(simplified))
 	return simplified, nil
 }
 
-func loginUpcoming(apiKey string) (string, error) {
+func login(apiKey string) (string, error) {
 	loginBody := map[string]string{
 		"apikey": apiKey,
 	}
@@ -135,7 +131,7 @@ func loginUpcoming(apiKey string) (string, error) {
 		return "", fmt.Errorf("error marshaling login body: %v", err)
 	}
 
-	req, err := http.NewRequest("POST", UpcomingBaseURL+"/login", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequest("POST", BaseURL+"/login", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return "", fmt.Errorf("error creating request: %v", err)
 	}
@@ -158,7 +154,7 @@ func loginUpcoming(apiKey string) (string, error) {
 		return "", fmt.Errorf("login failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var loginResp UpcomingLoginResponse
+	var loginResp LoginResponse
 	if err := json.Unmarshal(body, &loginResp); err != nil {
 		return "", fmt.Errorf("error unmarshaling response: %v", err)
 	}
@@ -166,8 +162,8 @@ func loginUpcoming(apiKey string) (string, error) {
 	return loginResp.Data.Token, nil
 }
 
-func makeUpcomingAuthenticatedRequest(token, endpoint string) (string, error) {
-	req, err := http.NewRequest("GET", UpcomingBaseURL+"/"+endpoint, nil)
+func makeAuthenticatedRequest(token, endpoint string) (string, error) {
+	req, err := http.NewRequest("GET", BaseURL+"/"+endpoint, nil)
 	if err != nil {
 		return "", fmt.Errorf("error creating request: %v", err)
 	}
