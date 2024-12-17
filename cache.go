@@ -15,6 +15,29 @@ const (
 	CacheBaseURL = "/static/cache"
 )
 
+// cacheImage downloads and caches an image with a specific filename
+func cacheImage(url string, filename string) error {
+	if url == "" {
+		return fmt.Errorf("empty image URL")
+	}
+
+	// Ensure cache directory exists
+	if err := os.MkdirAll(CacheDir, 0755); err != nil {
+		return fmt.Errorf("failed to create cache directory: %v", err)
+	}
+
+	cachePath := filepath.Join(CacheDir, filename)
+
+	// Check if the file already exists
+	if _, err := os.Stat(cachePath); err == nil {
+		// File already exists, no need to download
+		return nil
+	}
+
+	// Download and cache the image
+	return downloadAndCacheImage(url, cachePath)
+}
+
 // getCachedImageURL returns the local URL for a cached image
 // If the image isn't cached, it downloads and caches it first
 func getCachedImageURL(originalURL string, seriesID int) (string, error) {

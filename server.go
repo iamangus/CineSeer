@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +26,11 @@ type WebAPIResponse struct {
 }
 
 func main() {
+	// Ensure cache directory exists
+	if err := os.MkdirAll("static/cache", 0755); err != nil {
+		log.Fatal("Failed to create cache directory:", err)
+	}
+
 	// Set up logging to file
 	logFile, err := os.OpenFile("server.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -181,10 +188,69 @@ func main() {
 		})
 	})
 
+	// New endpoint for getting detailed series information
+	app.Get("/api/series/:id", apiCache, func(c *fiber.Ctx) error {
+		seriesID, err := strconv.Atoi(c.Params("id"))
+		if err != nil {
+			return c.Status(400).JSON(WebAPIResponse{
+				Error: "Invalid series ID",
+			})
+		}
+
+		log.Printf("Received request for series details ID: %d from %s", seriesID, c.IP())
+		seriesInfo, err := GetSeriesInfo(seriesID)
+		if err != nil {
+			log.Printf("Error getting series info: %v", err)
+			return c.Status(500).JSON(WebAPIResponse{
+				Error: err.Error(),
+			})
+		}
+
+		// Transform image URL to use cached version
+		if seriesInfo.Image != "" {
+			transformed, err := transformImageURLs(
+				[]DetailedSeries{*seriesInfo},
+				func(s DetailedSeries) string { return s.Image },
+				func(s DetailedSeries) int { return s.ID },
+				func(s DetailedSeries, url string) DetailedSeries {
+					s.Image = url
+					return s
+				},
+			)
+			if err != nil {
+				log.Printf("Error transforming image URL: %v", err)
+			} else if len(transformed) > 0 {
+				seriesInfo = &transformed[0]
+			}
+		}
+
+		// Fetch and cache the background image
+		backgroundURL, err := GetSeriesBackground(seriesID)
+		if err != nil {
+			log.Printf("Error getting background image: %v", err)
+		} else {
+			// Cache the background image
+			err = cacheImage(backgroundURL, fmt.Sprintf("%d-background.jpg", seriesID))
+			if err != nil {
+				log.Printf("Error caching background image: %v", err)
+			}
+		}
+
+		return c.JSON(WebAPIResponse{
+			Data: seriesInfo,
+		})
+	})
+
 	// Main route now just serves the template
 	app.Get("/", func(c *fiber.Ctx) error {
 		log.Printf("Serving index page to %s", c.IP())
 		return c.Render("index", fiber.Map{})
+	})
+
+	// New route to serve the series detail page
+	app.Get("/series/:id", func(c *fiber.Ctx) error {
+		log.Printf("Serving series detail page for ID %s to %s", c.Params("id"), c.IP())
+		return c.Render("series-detail", fiber.Map{})
 	})
 
 	log.Printf("Server starting on http://localhost:3002")

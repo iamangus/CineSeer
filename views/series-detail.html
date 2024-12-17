@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Series Details - CineGet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: clamp(1rem, 5vw, 3rem);
+            line-height: 1.5;
+            min-height: 100vh;
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.85); /* #0f172a with opacity */
+            z-index: 0;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-button:hover {
+            color: #e2e8f0;
+        }
+
+        .series-detail {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .series-header {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        @media (min-width: 768px) {
+            .series-header {
+                grid-template-columns: minmax(200px, 300px) 1fr;
+            }
+        }
+
+        .series-poster {
+            width: 100%;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            aspect-ratio: 3/4;
+        }
+
+        .series-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .series-info h1 {
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            color: #f8fafc;
+            margin-bottom: 1rem;
+        }
+
+        .series-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .series-meta span:not(:last-child)::after {
+            content: "•";
+            margin-left: 1rem;
+        }
+
+        .series-status {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #1e293b;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .series-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .detail-section {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .detail-section h2 {
+            font-size: 1.1rem;
+            color: #f8fafc;
+            margin-bottom: 1rem;
+        }
+
+        .detail-section p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .aliases-list {
+            list-style: none;
+        }
+
+        .aliases-list li {
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #2d3748;
+        }
+
+        .aliases-list li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 50vh;
+            font-size: 1.2rem;
+            color: #94a3b8;
+            position: relative;
+            z-index: 1;
+        }
+
+        .error {
+            color: #ef4444;
+            padding: 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="back-button-container"></div>
+    <div id="series-container" class="series-detail">
+        <div class="loading">Loading series details...</div>
+    </div>
+
+    <script>
+        // Get the base URL path for making relative requests
+        const getBasePath = () => {
+            const pathname = window.location.pathname;
+            const pathParts = pathname.split('/');
+            // Remove 'series' and the ID from the path
+            pathParts.splice(-2);
+            return pathParts.join('/');
+        };
+
+        // Get series ID from URL
+        const getSeriesId = () => {
+            const pathParts = window.location.pathname.split('/');
+            return pathParts[pathParts.length - 1];
+        };
+
+        // Function to ensure image URLs are properly constructed
+        const getImageUrl = (imageUrl) => {
+            if (!imageUrl) return '';
+            const basePath = getBasePath();
+            const cleanImageUrl = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
+            return `${basePath}/${cleanImageUrl}`;
+        };
+
+        // Function to get background image URL
+        const getBackgroundUrl = (seriesId) => {
+            const basePath = getBasePath();
+            return `${basePath}/static/cache/${seriesId}-background.jpg`;
+        };
+
+        // Get the navigation base path (includes /series for the back button)
+        const getNavBasePath = () => {
+            const pathname = window.location.pathname;
+            const pathParts = pathname.split('/');
+            // Remove only the ID from the path
+            pathParts.pop();
+            return pathParts.slice(0, -1).join('/');
+        };
+
+        // Render back button with correct base path
+        function renderBackButton() {
+            const basePath = getNavBasePath();
+            const container = document.getElementById('back-button-container');
+            container.innerHTML = `<a href="${basePath}" class="back-button">← Back to Series List</a>`;
+        }
+
+        function renderSeries(series) {
+            const container = document.getElementById('series-container');
+            const seriesId = getSeriesId();
+            
+            // Set the background image
+            document.body.style.backgroundImage = `url('${getBackgroundUrl(seriesId)}')`;
+            
+            container.innerHTML = `
+                <div class="series-header">
+                    <div class="series-poster">
+                        <img src="${getImageUrl(series.image)}" alt="${series.name}" onerror="this.style.display='none'">
+                    </div>
+                    <div class="series-info">
+                        <h1>${series.name}</h1>
+                        <div class="series-meta">
+                            <span>${series.year || 'Year N/A'}</span>
+                            <span>${series.averageRuntime} min</span>
+                            <span>${series.originalCountry || 'Country N/A'}</span>
+                        </div>
+                        <div class="series-status">${series.status.name}</div>
+                    </div>
+                </div>
+                <div class="series-details">
+                    <div class="detail-section">
+                        <h2>Broadcast Information</h2>
+                        <p>First Aired: ${series.firstAired || 'N/A'}</p>
+                        <p>Last Aired: ${series.lastAired || 'N/A'}</p>
+                        ${series.nextAired ? `<p>Next Episode: ${series.nextAired}</p>` : ''}
+                    </div>
+                    <div class="detail-section">
+                        <h2>Additional Details</h2>
+                        <p>Original Language: ${series.originalLanguage || 'N/A'}</p>
+                        <p>Score: ${series.score || 'N/A'}</p>
+                        <p>Last Updated: ${new Date(series.lastUpdated).toLocaleDateString()}</p>
+                    </div>
+                    ${series.aliases && series.aliases.length > 0 ? `
+                        <div class="detail-section">
+                            <h2>Alternative Names</h2>
+                            <ul class="aliases-list">
+                                ${series.aliases.map(alias => `
+                                    <li>${alias.name} (${alias.language})</li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            const container = document.getElementById('series-container');
+            container.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        async function fetchSeriesDetails() {
+            try {
+                const seriesId = getSeriesId();
+                const basePath = getBasePath();
+                const url = `${basePath}/api/series/${seriesId}`;
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const jsonResponse = await response.json();
+                
+                if (jsonResponse.error) {
+                    throw new Error(jsonResponse.error);
+                }
+                
+                if (!jsonResponse.data) {
+                    throw new Error('No data in response');
+                }
+
+                renderSeries(jsonResponse.data);
+            } catch (error) {
+                console.error('Fetch error:', error);
+                showError(`Error loading series details: ${error.message}`);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderBackButton();
+            fetchSeriesDetails();
+        });
+    </script>
+</body>
+</html>

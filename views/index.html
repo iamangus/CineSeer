@@ -49,6 +49,11 @@
             display: none;
         }
 
+        .series-link {
+            text-decoration: none;
+            color: inherit;
+        }
+
         .series-card {
             position: relative;
             border-radius: 0.5rem;
@@ -180,8 +185,9 @@
         // Function to ensure image URLs are properly constructed
         const getImageUrl = (imageUrl) => {
             if (!imageUrl) return '';
+            const basePath = getBasePath();
             const cleanImageUrl = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
-            return cleanImageUrl;
+            return `${basePath}/${cleanImageUrl}`;
         };
 
         // Render functions
@@ -193,21 +199,24 @@
             }
 
             const isUpcoming = container.id === 'upcoming-series';
+            const basePath = getBasePath();
 
             container.innerHTML = series.map(show => {
                 const imageUrl = getImageUrl(show.image);
                 console.log('Rendering series with image URL:', imageUrl);
 
                 return `
-                    <div class="series-card">
-                        <img class="series-image" src="${imageUrl}" alt="${show.name || 'TV Series'}" loading="lazy" onerror="this.style.display='none'">
-                        <div class="series-info">
-                            <div class="series-title">${show.name || 'Untitled'}</div>
-                            <div class="series-year">${show.year || 'TBA'}</div>
-                            ${isUpcoming && show.firstAired ? `<div class="series-date">Premieres: ${show.firstAired}</div>` : ''}
-                            <div class="series-overview">${show.overview || 'No overview available.'}</div>
+                    <a href="${basePath}/series/${show.id}" class="series-link">
+                        <div class="series-card">
+                            <img class="series-image" src="${imageUrl}" alt="${show.name || 'TV Series'}" loading="lazy" onerror="this.style.display='none'">
+                            <div class="series-info">
+                                <div class="series-title">${show.name || 'Untitled'}</div>
+                                <div class="series-year">${show.year || 'TBA'}</div>
+                                ${isUpcoming && show.firstAired ? `<div class="series-date">Premieres: ${show.firstAired}</div>` : ''}
+                                <div class="series-overview">${show.overview || 'No overview available.'}</div>
+                            </div>
                         </div>
-                    </div>
+                    </a>
                 `;
             }).join('');
         }
