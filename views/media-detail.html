@@ -484,7 +484,7 @@
                 const contentType = pathParts[pathParts.length - 2];
                 const contentId = pathParts[pathParts.length - 1];
                 
-                const response = await fetch(`/api/${contentType}/${contentId}`);
+                const response = await fetch(`../api/${contentType}/${contentId}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
