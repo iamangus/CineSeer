@@ -5,6 +5,106 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CineSeer</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script>
+        const getImageUrl = (posterPath) => {
+            if (!posterPath) return '';
+            return `https://image.tmdb.org/t/p/w500${posterPath}`;
+        };
+
+        function renderMedia(container, items) {
+            if (!items || !Array.isArray(items)) {
+                console.error('Invalid media data:', items);
+                showError(container, 'No content available');
+                return;
+            }
+
+            const validItems = items.filter(item => {
+                return item && 
+                       (item.title || item.name) && 
+                       item.poster_path && 
+                       (item.release_date || item.first_air_date);
+            });
+
+            if (validItems.length === 0) {
+                showError(container, 'No content available');
+                return;
+            }
+
+            container.innerHTML = validItems.slice(0, 20).map(item => {
+                const imageUrl = getImageUrl(item.poster_path);
+                const title = item.title || item.name;
+                const releaseDate = item.release_date || item.first_air_date;
+                const year = releaseDate ? new Date(releaseDate).getFullYear() : 'TBA';
+                const detailPath = item.release_date ? 'movie' : 'series';
+
+                return `
+                    <a href="${detailPath}/${item.id}" class="media-link">
+                        <div class="media-card">
+                            <img class="media-image" src="${imageUrl}" alt="${title}" loading="lazy" onerror="this.style.display='none'">
+                            <div class="media-info">
+                                <div class="media-title">${title}</div>
+                                <div class="media-year">${year}</div>
+                                <div class="media-overview">${item.overview || 'No overview available.'}</div>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            }).join('');
+        }
+
+        function showError(container, message) {
+            console.error('Error:', message);
+            container.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        async function fetchData(endpoint, container, type) {
+            try {
+                const response = await fetch(`api/home?type=${type}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                if (!data || !data[type]) {
+                    throw new Error('Invalid response format');
+                }
+                renderMedia(container, data[type]);
+            } catch (error) {
+                console.error('Fetch error:', error);
+                showError(container, `Error loading data: ${error.message}`);
+            }
+        }
+
+        // Handle mobile touch interactions
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fetch all media types
+            fetchData('', document.getElementById('trending-tv'), 'trending_tv');
+            fetchData('', document.getElementById('trending-movies'), 'trending_movies');
+            fetchData('', document.getElementById('popular-tv'), 'popular_tv');
+            fetchData('', document.getElementById('popular-movies'), 'popular_movies');
+            fetchData('', document.getElementById('upcoming-movies'), 'upcoming_movies');
+            fetchData('', document.getElementById('recommended-tv'), 'recommended_tv');
+            fetchData('', document.getElementById('recommended-movies'), 'recommended_movies');
+
+            // Mobile touch handling
+            if (window.matchMedia('(max-width: 768px)').matches) {
+                document.addEventListener('click', function(e) {
+                    const card = e.target.closest('.media-card');
+                    if (card) {
+                        document.querySelectorAll('.media-card').forEach(c => {
+                            if (c !== card) c.classList.remove('active');
+                        });
+                        card.classList.toggle('active');
+                    } else {
+                        document.querySelectorAll('.media-card').forEach(c => 
+                            c.classList.remove('active')
+                        );
+                    }
+                });
+            }
+        });
+    </script>
     <style>
         * {
             margin: 0;
@@ -160,149 +260,38 @@
     <h1>CineSeer</h1>
     
     <h2>Trending TV Shows</h2>
-    <div id="trending-tv" class="media-container">
+    <div class="media-container" id="trending-tv">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Trending Movies</h2>
-    <div id="trending-movies" class="media-container">
+    <div class="media-container" id="trending-movies">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Popular TV Shows</h2>
-    <div id="popular-tv" class="media-container">
+    <div class="media-container" id="popular-tv">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Popular Movies</h2>
-    <div id="popular-movies" class="media-container">
+    <div class="media-container" id="popular-movies">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Upcoming Movies</h2>
-    <div id="upcoming-movies" class="media-container">
+    <div class="media-container" id="upcoming-movies">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Recommended TV Shows</h2>
-    <div id="recommended-tv" class="media-container">
+    <div class="media-container" id="recommended-tv">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Recommended Movies</h2>
-    <div id="recommended-movies" class="media-container">
+    <div class="media-container" id="recommended-movies">
         <div class="loading">Loading...</div>
     </div>
-
-    <script>
-        const getBasePath = () => {
-            const pathname = window.location.pathname;
-            return pathname === '/' ? '' : pathname;
-        };
-
-        const getImageUrl = (posterPath) => {
-            if (!posterPath) return '';
-            return `https://image.tmdb.org/t/p/w500${posterPath}`;
-        };
-
-        function renderMedia(container, items, type) {
-            // Check if items exists and is an array
-            if (!items || !Array.isArray(items)) {
-                console.error('Invalid media data:', items);
-                showError(container, 'No content available');
-                return;
-            }
-
-            // Filter out items without required data
-            const validItems = items.filter(item => {
-                return item && 
-                       (item.title || item.name) && 
-                       item.poster_path && 
-                       (item.release_date || item.first_air_date);
-            });
-
-            if (validItems.length === 0) {
-                showError(container, 'No content available');
-                return;
-            }
-
-            const basePath = getBasePath();
-            container.innerHTML = validItems.slice(0, 20).map(item => {
-                const imageUrl = getImageUrl(item.poster_path);
-                const title = item.title || item.name;
-                const releaseDate = item.release_date || item.first_air_date;
-                const year = releaseDate ? new Date(releaseDate).getFullYear() : 'TBA';
-                // Determine media type based on dates
-                const detailPath = item.release_date ? 'movie' : 'series';
-
-                return `
-                    <a href="${basePath}/${detailPath}/${item.id}" class="media-link">
-                        <div class="media-card">
-                            <img class="media-image" src="${imageUrl}" alt="${title}" loading="lazy" onerror="this.style.display='none'">
-                            <div class="media-info">
-                                <div class="media-title">${title}</div>
-                                <div class="media-year">${year}</div>
-                                <div class="media-overview">${item.overview || 'No overview available.'}</div>
-                            </div>
-                        </div>
-                    </a>
-                `;
-            }).join('');
-        }
-
-        function showError(container, message) {
-            console.error('Error:', message);
-            container.innerHTML = `<div class="error">${message}</div>`;
-        }
-
-        async function fetchData(endpoint, container, type) {
-            try {
-                const basePath = getBasePath();
-                const url = `${basePath}/api${endpoint}`;
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                if (!data || !data[type]) {
-                    throw new Error('Invalid response format');
-                }
-                renderMedia(container, data[type], type);
-            } catch (error) {
-                console.error('Fetch error:', error);
-                showError(container, `Error loading data: ${error.message}`);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            // Fetch all media types
-            fetchData('/home', document.getElementById('trending-tv'), 'trending_tv');
-            fetchData('/home', document.getElementById('trending-movies'), 'trending_movies');
-            fetchData('/home', document.getElementById('popular-tv'), 'popular_tv');
-            fetchData('/home', document.getElementById('popular-movies'), 'popular_movies');
-            fetchData('/home', document.getElementById('upcoming-movies'), 'upcoming_movies');
-            fetchData('/home', document.getElementById('recommended-tv'), 'recommended_tv');
-            fetchData('/home', document.getElementById('recommended-movies'), 'recommended_movies');
-
-            // Mobile touch handling
-            if (window.matchMedia('(max-width: 768px)').matches) {
-                document.addEventListener('click', function(e) {
-                    const card = e.target.closest('.media-card');
-                    if (card) {
-                        document.querySelectorAll('.media-card').forEach(c => {
-                            if (c !== card) c.classList.remove('active');
-                        });
-                        card.classList.toggle('active');
-                    } else {
-                        document.querySelectorAll('.media-card').forEach(c => 
-                            c.classList.remove('active')
-                        );
-                    }
-                });
-            }
-        });
-    </script>
 </body>
 </html>

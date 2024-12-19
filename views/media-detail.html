@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -302,43 +303,22 @@
     </style>
 </head>
 <body>
-    <div id="back-button-container"></div>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <div id="back-button-container">
+        <a href=".." class="back-button">← Back to Home</a>
+    </div>
     <div id="content-container">
         <div class="loading">Loading details...</div>
     </div>
 
     <script>
-        const getBasePath = () => {
-            const pathname = window.location.pathname;
-            const pathParts = pathname.split('/');
-            pathParts.splice(-2);
-            return pathParts.join('/');
-        };
-
-        const getContentId = () => {
-            const pathParts = window.location.pathname.split('/');
-            return pathParts[pathParts.length - 1];
-        };
-
-        const getContentType = () => {
-            const pathParts = window.location.pathname.split('/');
-            return pathParts[pathParts.length - 2];
-        };
-
         const getImageUrl = (path) => {
             if (!path) return '';
             return `https://image.tmdb.org/t/p/w500${path}`;
         };
 
-        function renderBackButton() {
-            const basePath = getBasePath();
-            const container = document.getElementById('back-button-container');
-            container.innerHTML = `<a href="${basePath}" class="back-button">← Back to Home</a>`;
-        }
-
-        function renderContent(content) {
+        function renderContent(content, type) {
             const container = document.getElementById('content-container');
-            const type = getContentType();
             
             container.innerHTML = `
                 <div class="content-detail">
@@ -493,6 +473,31 @@
             `;
         }
 
+        function showError(message) {
+            const container = document.getElementById('content-container');
+            container.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        async function fetchContentDetails() {
+            try {
+                const pathParts = window.location.pathname.split('/');
+                const contentType = pathParts[pathParts.length - 2];
+                const contentId = pathParts[pathParts.length - 1];
+                
+                const response = await fetch(`/api/${contentType}/${contentId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const content = await response.json();
+                renderContent(content, contentType);
+            } catch (error) {
+                console.error('Fetch error:', error);
+                showError(`Error loading details: ${error.message}`);
+            }
+        }
+
         function toggleSeason(seasonNumber) {
             const content = document.querySelector(`#season-${seasonNumber}`);
             const wasActive = content.classList.contains('active');
@@ -508,36 +513,9 @@
             }
         }
 
-        function showError(message) {
-            const container = document.getElementById('content-container');
-            container.innerHTML = `<div class="error">${message}</div>`;
-        }
-
-        async function fetchContentDetails() {
-            try {
-                const contentId = getContentId();
-                const contentType = getContentType();
-                const basePath = getBasePath();
-                const url = `${basePath}/api/${contentType}/${contentId}`;
-                
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const content = await response.json();
-                renderContent(content);
-            } catch (error) {
-                console.error('Fetch error:', error);
-                showError(`Error loading details: ${error.message}`);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            renderBackButton();
-            fetchContentDetails();
-        });
+        document.addEventListener('DOMContentLoaded', fetchContentDetails);
     </script>
+
+    <!-- Content will be loaded by HTMX -->
 </body>
 </html>
