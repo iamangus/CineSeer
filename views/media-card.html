@@ -1,0 +1,15 @@
+<a href="./{{.Type}}/{{.ID}}" class="media-link">
+    <div class="media-card">
+        <div class="media-image-container">
+            <div class="media-image-placeholder"></div>
+            <img class="media-image" src="./api/image/{{.ID}}/poster" alt="{{.Title}}" loading="lazy" 
+                onload="this.parentElement.classList.add('loaded')"
+                onerror="this.parentElement.classList.add('error')">
+        </div>
+        <div class="media-info">
+            <div class="media-title">{{.Title}}</div>
+            <div class="media-year">{{.Year}}</div>
+            <div class="media-overview">{{.Overview}}</div>
+        </div>
+    </div>
+</a>

@@ -6,88 +6,8 @@
     <title>CineSeer</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
-        const getImageUrl = (posterPath, contentId) => {
-            if (!posterPath) return '';
-            return `./api/image/${contentId}/poster`;
-        };
-
-        function renderMedia(container, items) {
-            if (!items || !Array.isArray(items)) {
-                console.error('Invalid media data:', items);
-                showError(container, 'No content available');
-                return;
-            }
-
-            const validItems = items.filter(item => {
-                return item && 
-                       (item.title || item.name) && 
-                       item.poster_path && 
-                       (item.release_date || item.first_air_date);
-            });
-
-            if (validItems.length === 0) {
-                showError(container, 'No content available');
-                return;
-            }
-
-            container.innerHTML = validItems.slice(0, 20).map(item => {
-                const imageUrl = getImageUrl(item.poster_path);
-                const title = item.title || item.name;
-                const releaseDate = item.release_date || item.first_air_date;
-                const year = releaseDate ? new Date(releaseDate).getFullYear() : 'TBA';
-                const detailPath = item.release_date ? 'movie' : 'series';
-
-                return `
-                    <a href="./${detailPath}/${item.id}" class="media-link">
-                        <div class="media-card">
-                            <img class="media-image" src="${getImageUrl(item.poster_path, item.id)}" alt="${title}" loading="lazy" onerror="this.style.display='none'">
-                            <div class="media-info">
-                                <div class="media-title">${title}</div>
-                                <div class="media-year">${year}</div>
-                                <div class="media-overview">${item.overview || 'No overview available.'}</div>
-                            </div>
-                        </div>
-                    </a>
-                `;
-            }).join('');
-        }
-
-        function showError(container, message) {
-            console.error('Error:', message);
-            container.innerHTML = `<div class="error">${message}</div>`;
-        }
-
-        async function fetchData(endpoint, container, type) {
-            try {
-                const response = await fetch(`./api/home?type=${type}`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                if (!data || !data[type]) {
-                    throw new Error('Invalid response format');
-                }
-                renderMedia(container, data[type]);
-            } catch (error) {
-                console.error('Fetch error:', error);
-                showError(container, `Error loading data: ${error.message}`);
-            }
-        }
-
-        // Handle mobile touch interactions
+        // Mobile touch handling
         document.addEventListener('DOMContentLoaded', function() {
-            // Fetch all media types
-            fetchData('', document.getElementById('trending-tv'), 'trending_tv');
-            fetchData('', document.getElementById('trending-movies'), 'trending_movies');
-            fetchData('', document.getElementById('popular-tv'), 'popular_tv');
-            fetchData('', document.getElementById('popular-movies'), 'popular_movies');
-            fetchData('', document.getElementById('upcoming-movies'), 'upcoming_movies');
-            fetchData('', document.getElementById('recommended-tv'), 'recommended_tv');
-            fetchData('', document.getElementById('recommended-movies'), 'recommended_movies');
-
-            // Mobile touch handling
             if (window.matchMedia('(max-width: 768px)').matches) {
                 document.addEventListener('click', function(e) {
                     const card = e.target.closest('.media-card');
@@ -120,21 +40,21 @@
         }
 
         h1, h2 {
-            margin-bottom: clamp(1rem, 4vw, 2rem);
+            margin-bottom: clamp(0.67rem, 2.7vw, 1.33rem);
             text-align: left;
             color: #f8fafc;
             font-size: clamp(1.25rem, 4vw, 2rem);
         }
 
         h2 {
-            margin-top: clamp(2rem, 6vw, 3rem);
+            margin-top: clamp(1.33rem, 4vw, 2rem);
             font-size: clamp(1.1rem, 3.5vw, 1.75rem);
         }
 
         .media-container {
             display: grid;
             grid-auto-flow: column;
-            grid-auto-columns: clamp(180px, 45vw, 17rem);
+            grid-auto-columns: clamp(126px, 31.5vw, 12rem);
             gap: clamp(0.5rem, 2vw, 1.5rem);
             overflow-x: auto;
             padding: clamp(0.5rem, 2vw, 1rem);
@@ -163,7 +83,7 @@
             transition: transform 0.2s;
             aspect-ratio: 3/4;
             height: auto;
-            max-height: clamp(280px, 60vh, 400px);
+            max-height: clamp(196px, 42vh, 280px);
         }
 
         .loading {
@@ -197,11 +117,52 @@
             }
         }
 
+        .media-image-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #1e293b;
+        }
+
+        .media-image-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #1e293b 25%, #2d3c50 50%, #1e293b 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        .media-image-container.loaded::before {
+            display: none;
+        }
+
+        .media-image-container.error::before {
+            animation: none;
+            background: #1e293b;
+        }
+
         .media-image {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
             transition: opacity 0.3s;
+            opacity: 0;
+        }
+
+        .media-image-container.loaded .media-image {
+            opacity: 1;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
         .media-info {
@@ -260,37 +221,37 @@
     <h1>CineSeer</h1>
     
     <h2>Trending TV Shows</h2>
-    <div class="media-container" id="trending-tv">
+    <div class="media-container" id="trending-tv" hx-get="./api/home?type=trending_tv" hx-trigger="load">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Trending Movies</h2>
-    <div class="media-container" id="trending-movies">
+    <div class="media-container" id="trending-movies" hx-get="./api/home?type=trending_movies" hx-trigger="load">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Popular TV Shows</h2>
-    <div class="media-container" id="popular-tv">
+    <div class="media-container" id="popular-tv" hx-get="./api/home?type=popular_tv" hx-trigger="load">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Popular Movies</h2>
-    <div class="media-container" id="popular-movies">
+    <div class="media-container" id="popular-movies" hx-get="./api/home?type=popular_movies" hx-trigger="load">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Upcoming Movies</h2>
-    <div class="media-container" id="upcoming-movies">
+    <div class="media-container" id="upcoming-movies" hx-get="./api/home?type=upcoming_movies" hx-trigger="load">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Recommended TV Shows</h2>
-    <div class="media-container" id="recommended-tv">
+    <div class="media-container" id="recommended-tv" hx-get="./api/home?type=recommended_tv" hx-trigger="load">
         <div class="loading">Loading...</div>
     </div>
 
     <h2>Recommended Movies</h2>
-    <div class="media-container" id="recommended-movies">
+    <div class="media-container" id="recommended-movies" hx-get="./api/home?type=recommended_movies" hx-trigger="load">
         <div class="loading">Loading...</div>
     </div>
 </body>

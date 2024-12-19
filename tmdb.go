@@ -47,23 +47,32 @@ type SimplifiedSeries struct {
 }
 
 type DetailedContent struct {
-	ID               int      `json:"id"`
-	Name            string   `json:"name"`
-	Overview        string   `json:"overview"`
-	PosterPath      string   `json:"poster_path"`
-	BackdropPath    string   `json:"backdrop_path"`
-	VoteAverage     float64  `json:"vote_average"`
-	Genres          []Genre  `json:"genres"`
-	Tagline         string   `json:"tagline"`
-	Status          string   `json:"status"`
-	OriginalLanguage string  `json:"original_language"`
-	ProductionCountries []ProductionCountry `json:"production_countries"`
-	Networks        []Network `json:"networks,omitempty"`
-	NumberOfSeasons int      `json:"number_of_seasons,omitempty"`
-	Runtime         int      `json:"runtime,omitempty"`
-	CreatedBy       []CreatedBy `json:"created_by,omitempty"`
-	ReleaseDate     string    `json:"release_date,omitempty"`
-	FirstAirDate    string    `json:"first_air_date,omitempty"`
+	ID                  int                  `json:"id"`
+	Name                string               `json:"name"`
+	Title               string               `json:"title"`
+	Overview            string               `json:"overview"`
+	PosterPath          string               `json:"poster_path"`
+	BackdropPath        string               `json:"backdrop_path"`
+	VoteAverage         float64              `json:"vote_average"`
+	Genres              []Genre              `json:"genres"`
+	Tagline             string               `json:"tagline"`
+	Status              string               `json:"status"`
+	OriginalLanguage    string               `json:"original_language"`
+	ProductionCountries []ProductionCountry  `json:"production_countries"`
+	ProductionCompanies []ProductionCompany  `json:"production_companies"`
+	Networks           []Network            `json:"networks,omitempty"`
+	NumberOfSeasons    int                  `json:"number_of_seasons,omitempty"`
+	Runtime            int                  `json:"runtime,omitempty"`
+	CreatedBy          []CreatedBy          `json:"created_by,omitempty"`
+	ReleaseDate        string               `json:"release_date,omitempty"`
+	FirstAirDate       string               `json:"first_air_date,omitempty"`
+	VoteCount          int                  `json:"vote_count"`
+	Popularity         float64              `json:"popularity"`
+	Revenue            int64                `json:"revenue"`
+	Budget             int64                `json:"budget"`
+	BelongsToCollection *Collection         `json:"belongs_to_collection"`
+	Credits            Credits              `json:"credits"`
+	Keywords           Keywords             `json:"keywords"`
 }
 
 type Genre struct {
@@ -84,6 +93,65 @@ type ProductionCountry struct {
 type CreatedBy struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
+}
+
+type ProductionCompany struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type Collection struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	PosterPath  string `json:"poster_path"`
+}
+
+type Credits struct {
+	Cast []CastMember `json:"cast"`
+	Crew []CrewMember `json:"crew"`
+}
+
+type CastMember struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+	Role string `json:"character"`
+}
+
+type CrewMember struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+	Job  string `json:"job"`
+}
+
+type Keywords struct {
+	Keywords []Keyword `json:"keywords"`
+}
+
+type Keyword struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type SeasonDetails struct {
+	ID           int       `json:"id"`
+	Name         string    `json:"name"`
+	Overview     string    `json:"overview"`
+	PosterPath   string    `json:"poster_path"`
+	AirDate      string    `json:"air_date"`
+	Episodes     []Episode `json:"episodes"`
+	SeasonNumber int       `json:"season_number"`
+}
+
+type Episode struct {
+	ID             int     `json:"id"`
+	Name           string  `json:"name"`
+	Overview       string  `json:"overview"`
+	AirDate        string  `json:"air_date"`
+	EpisodeNumber  int     `json:"episode_number"`
+	SeasonNumber   int     `json:"season_number"`
+	StillPath      string  `json:"still_path"`
+	VoteAverage    float64 `json:"vote_average"`
+	VoteCount      int     `json:"vote_count"`
 }
 
 func makeRequest(endpoint string) ([]byte, error) {
@@ -390,6 +458,20 @@ func get_details_movies(movieID int) (*DetailedContent, error) {
 	var response DetailedContent
 	if err := json.Unmarshal(data, &response); err != nil {
 		log.Printf("Error unmarshaling movie details response: %v", err)
+		return nil, err
+	}
+	return &response, nil
+}
+
+func get_season_details(seriesID int, seasonNumber int) (*SeasonDetails, error) {
+	data, err := makeRequest(fmt.Sprintf("/tv/%d/season/%d", seriesID, seasonNumber))
+	if err != nil {
+		return nil, err
+	}
+
+	var response SeasonDetails
+	if err := json.Unmarshal(data, &response); err != nil {
+		log.Printf("Error unmarshaling season details response: %v", err)
 		return nil, err
 	}
 	return &response, nil

@@ -1,0 +1,414 @@
+
+<style>
+    .content-detail {
+        max-width: 1400px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 1fr 350px;
+        grid-template-areas: 
+            "main sidebar"
+            "details details";
+        gap: 2rem;
+    }
+
+    .main-content {
+        grid-area: main;
+    }
+
+    .sidebar {
+        grid-area: sidebar;
+    }
+
+    .additional-details {
+        grid-area: details;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+    }
+
+    .content-header {
+        display: grid;
+        grid-template-columns: minmax(200px, 300px) 1fr;
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .sidebar {
+        background: rgba(30, 41, 59, 0.5);
+        backdrop-filter: blur(10px);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        height: fit-content;
+    }
+
+    .ratings-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .rating-item {
+        text-align: center;
+    }
+
+    .rating-value {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-bottom: 0.25rem;
+    }
+
+    .rating-label {
+        font-size: 0.8rem;
+        color: #94a3b8;
+    }
+
+    .metadata-item {
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 1rem;
+    }
+
+    .metadata-label {
+        color: #94a3b8;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+    }
+
+    .metadata-value {
+        font-size: 0.9rem;
+        text-align: right;
+    }
+
+    .collection-banner {
+        background: rgba(30, 41, 59, 0.5);
+        backdrop-filter: blur(10px);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+    }
+
+    .collection-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .collection-image {
+        width: 48px;
+        height: 48px;
+        border-radius: 0.25rem;
+        object-fit: cover;
+    }
+
+    .view-button {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+
+    .view-button:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .watch-trailer {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
+    }
+
+    .watch-trailer:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    @media (max-width: 1200px) {
+        .content-detail {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .content-poster {
+        width: 100%;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        aspect-ratio: 3/4;
+    }
+
+    .content-poster img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .content-info h1 {
+        font-size: clamp(1.5rem, 5vw, 2.5rem);
+        color: #f8fafc;
+        margin-bottom: 1rem;
+    }
+
+    .content-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        color: #94a3b8;
+        font-size: 0.9rem;
+    }
+
+    .content-meta span:not(:last-child)::after {
+        content: "•";
+        margin-left: 1rem;
+    }
+
+    .content-tagline {
+        font-style: italic;
+        color: #94a3b8;
+        margin-bottom: 1rem;
+    }
+
+    .content-overview {
+        margin-bottom: 2rem;
+        line-height: 1.6;
+    }
+
+    .genre-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .genre-tag {
+        background: #1e293b;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.8rem;
+    }
+
+    .detail-section {
+        background: rgba(30, 41, 59, 0.8);
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .detail-section h2 {
+        font-size: 1.1rem;
+        color: #f8fafc;
+        margin-bottom: 1rem;
+    }
+
+    .detail-section p {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .season {
+        margin-bottom: 1rem;
+    }
+
+    .season-header {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .season-header:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .season-content {
+        padding: 1rem;
+    }
+
+    .episode {
+        background: rgba(30, 41, 59, 0.5);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .episode-number {
+        font-weight: bold;
+        color: #f8fafc;
+        margin-bottom: 0.5rem;
+    }
+
+    .episode-title {
+        font-size: 1.1rem;
+        color: #f8fafc;
+        margin-bottom: 0.5rem;
+    }
+
+    .episode-overview {
+        color: #94a3b8;
+        margin-bottom: 0.5rem;
+        line-height: 1.5;
+    }
+
+    .episode-meta {
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+</style>
+<div class="content-detail">
+    <div class="main-content">
+        <div class="content-header">
+            <div class="content-poster">
+                        <img src="../api/image/{{.id}}/poster" alt="{{.title}}">
+            </div>
+            <div class="content-info">
+                <h1>{{.title}} {{if .year}}({{.year}}){{end}}</h1>
+                        
+                <div class="content-meta">
+                    <span>{{.duration}}</span>
+                    <span>{{.status}}</span>
+                    <span>{{.genres}}</span>
+                </div>
+
+                <button class="watch-trailer">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Watch Trailer
+                </button>
+
+                <div class="genre-tags">
+                    {{.genreTags}}
+                </div>
+
+                {{if .tagline}}
+                <div class="content-tagline">{{.tagline}}</div>
+                {{end}}
+
+                <div class="content-overview">{{.overview}}</div>
+            </div>
+        </div>
+
+        {{if .collection}}
+        <div class="collection-banner">
+            <div class="collection-info">
+                            <img src="../api/image/{{.collection.id}}/poster" alt="{{.collection.name}}" class="collection-image">
+                <span>{{.collection.name}}</span>
+            </div>
+            <button class="view-button">View</button>
+        </div>
+        {{end}}
+
+        {{if .seasons}}
+        <div class="detail-section">
+            <h2>Seasons</h2>
+            <div class="season-accordion">
+                {{.seasons}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+
+    <aside class="sidebar">
+        <div class="ratings-grid">
+            <div class="rating-item">
+                <div class="rating-value">{{.voteAverage}}%</div>
+                <div class="rating-label">Critics</div>
+            </div>
+            <div class="rating-item">
+                <div class="rating-value">{{.popularity}}%</div>
+                <div class="rating-label">Audience</div>
+            </div>
+            <div class="rating-item">
+                <div class="rating-value">{{.voteCount}}</div>
+                <div class="rating-label">Votes</div>
+            </div>
+            <div class="rating-item">
+                <div class="rating-value">{{.rating}}</div>
+                <div class="rating-label">Rating</div>
+            </div>
+        </div>
+
+        <div class="metadata-item">
+            <div class="metadata-label">Status</div>
+            <div class="metadata-value">{{.status}}</div>
+        </div>
+
+        <div class="metadata-item">
+            <div class="metadata-label">Release Date</div>
+            <div class="metadata-value">{{.releaseDate}}</div>
+        </div>
+
+        <div class="metadata-item">
+            <div class="metadata-label">Revenue</div>
+            <div class="metadata-value">${{.revenue}}</div>
+        </div>
+
+        <div class="metadata-item">
+            <div class="metadata-label">Budget</div>
+            <div class="metadata-value">${{.budget}}</div>
+        </div>
+
+        <div class="metadata-item">
+            <div class="metadata-label">Original Language</div>
+            <div class="metadata-value">{{.language}}</div>
+        </div>
+
+        <div class="metadata-item">
+            <div class="metadata-label">Production Country</div>
+            <div class="metadata-value">{{.countries}}</div>
+        </div>
+
+        <div class="metadata-item">
+            <div class="metadata-label">Studios</div>
+            <div class="metadata-value">{{.studios}}</div>
+        </div>
+    </aside>
+
+    <div class="additional-details">
+        <div class="detail-section">
+            <h2>Director</h2>
+            <p>{{.director}}</p>
+        </div>
+
+        <div class="detail-section">
+            <h2>Screenplay</h2>
+            <p>{{.screenplay}}</p>
+        </div>
+
+        <div class="detail-section">
+            <h2>Producer</h2>
+            <p>{{.producer}}</p>
+        </div>
+
+        <div class="detail-section">
+            <h2>Keywords</h2>
+            <div class="genre-tags">
+                {{.keywords}}
+            </div>
+        </div>
+    </div>
+</div>
+{{if .backdrop}}
+<script>
+    document.body.style.backgroundImage = 'url("{{.backdrop}}")';
+</script>
+{{end}}
