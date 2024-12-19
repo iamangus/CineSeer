@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Details - CineSeer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: clamp(1rem, 5vw, 3rem);
+            line-height: 1.5;
+            min-height: 100vh;
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.85);
+            z-index: 0;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-button:hover {
+            color: #e2e8f0;
+        }
+
+        .processing-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .processing-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: currentColor;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        .content-detail {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 2rem;
+        }
+
+        .main-content {
+            flex: 1;
+        }
+
+        .content-header {
+            display: grid;
+            grid-template-columns: minmax(200px, 300px) 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .sidebar {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            height: fit-content;
+        }
+
+        .ratings-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .rating-item {
+            text-align: center;
+        }
+
+        .rating-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .rating-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .metadata-item {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 1rem;
+        }
+
+        .metadata-label {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .metadata-value {
+            font-size: 0.9rem;
+            text-align: right;
+        }
+
+        .collection-banner {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+        }
+
+        .collection-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .collection-image {
+            width: 48px;
+            height: 48px;
+            border-radius: 0.25rem;
+            object-fit: cover;
+        }
+
+        .view-button {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .view-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .watch-trailer {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .watch-trailer:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        @media (max-width: 1200px) {
+            .content-detail {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .content-poster {
+            width: 100%;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            aspect-ratio: 3/4;
+        }
+
+        .content-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .content-info h1 {
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            color: #f8fafc;
+            margin-bottom: 1rem;
+        }
+
+        .content-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .content-meta span:not(:last-child)::after {
+            content: "•";
+            margin-left: 1rem;
+        }
+
+        .content-tagline {
+            font-style: italic;
+            color: #94a3b8;
+            margin-bottom: 1rem;
+        }
+
+        .content-overview {
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .genre-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .genre-tag {
+            background: #1e293b;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .content-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .detail-section {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .detail-section h2 {
+            font-size: 1.1rem;
+            color: #f8fafc;
+            margin-bottom: 1rem;
+        }
+
+        .detail-section p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 50vh;
+            font-size: 1.2rem;
+            color: #94a3b8;
+            position: relative;
+            z-index: 1;
+        }
+
+        .error {
+            color: #ef4444;
+            padding: 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="back-button-container"></div>
+    <div id="content-container">
+        <div class="loading">Loading details...</div>
+    </div>
+
+    <script>
+        const getBasePath = () => {
+            const pathname = window.location.pathname;
+            const pathParts = pathname.split('/');
+            pathParts.splice(-2);
+            return pathParts.join('/');
+        };
+
+        const getContentId = () => {
+            const pathParts = window.location.pathname.split('/');
+            return pathParts[pathParts.length - 1];
+        };
+
+        const getContentType = () => {
+            const pathParts = window.location.pathname.split('/');
+            return pathParts[pathParts.length - 2];
+        };
+
+        const getImageUrl = (path) => {
+            if (!path) return '';
+            return `https://image.tmdb.org/t/p/w500${path}`;
+        };
+
+        function renderBackButton() {
+            const basePath = getBasePath();
+            const container = document.getElementById('back-button-container');
+            container.innerHTML = `<a href="${basePath}" class="back-button">← Back to Home</a>`;
+        }
+
+        function renderContent(content) {
+            const container = document.getElementById('content-container');
+            const type = getContentType();
+            
+            container.innerHTML = `
+                <div class="content-detail">
+                    <div class="main-content">
+                        <div class="content-header">
+                            <div class="content-poster">
+                                <img src="${getImageUrl(content.poster_path)}" alt="${content.title || content.name}">
+                            </div>
+                            <div class="content-info">
+                                <div class="processing-badge">Processing</div>
+                                <h1>${content.title || content.name} (${new Date(content.release_date || content.first_air_date).getFullYear()})</h1>
+                                
+                                <div class="content-meta">
+                                    <span>${type === 'movie' ? `${content.runtime} minutes` : `${content.number_of_seasons} Season${content.number_of_seasons !== 1 ? 's' : ''}`}</span>
+                                    <span>${content.status}</span>
+                                    <span>${content.genres.map(genre => genre.name).join(', ')}</span>
+                                </div>
+
+                                <button class="watch-trailer">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                    </svg>
+                                    Watch Trailer
+                                </button>
+
+                                <div class="genre-tags">
+                                    ${content.genres.map(genre => `
+                                        <span class="genre-tag">${genre.name}</span>
+                                    `).join('')}
+                                </div>
+
+                                ${content.tagline ? `
+                                    <div class="content-tagline">${content.tagline}</div>
+                                ` : ''}
+
+                                <div class="content-overview">${content.overview}</div>
+                            </div>
+                        </div>
+
+                        ${content.belongs_to_collection ? `
+                            <div class="collection-banner">
+                                <div class="collection-info">
+                                    <img src="${getImageUrl(content.belongs_to_collection.poster_path)}" alt="${content.belongs_to_collection.name}" class="collection-image">
+                                    <span>${content.belongs_to_collection.name}</span>
+                                </div>
+                                <button class="view-button">View</button>
+                            </div>
+                        ` : ''}
+
+                        <div class="content-details">
+                            <div class="detail-section">
+                                <h2>Director</h2>
+                                <p>${content.credits?.crew?.find(c => c.job === 'Director')?.name || 'N/A'}</p>
+                            </div>
+
+                            <div class="detail-section">
+                                <h2>Screenplay</h2>
+                                <p>${content.credits?.crew?.find(c => c.job === 'Screenplay')?.name || 'N/A'}</p>
+                            </div>
+
+                            <div class="detail-section">
+                                <h2>Producer</h2>
+                                <p>${content.credits?.crew?.filter(c => c.job === 'Producer').map(p => p.name).join(', ') || 'N/A'}</p>
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <h2>Keywords</h2>
+                            <div class="genre-tags">
+                                ${content.keywords?.keywords?.map(keyword => `
+                                    <span class="genre-tag">${keyword.name}</span>
+                                `).join('') || 'No keywords available'}
+                            </div>
+                        </div>
+
+                        ${type === 'series' ? `
+                            <div class="detail-section">
+                                <h2>Seasons</h2>
+                                <div class="season-accordion">
+                                    ${Array.from({length: content.number_of_seasons}, (_, i) => i + 1).map(season => `
+                                        <div class="season">
+                                            <div class="season-header" onclick="toggleSeason(${season})">
+                                                Season ${season}
+                                            </div>
+                                            <div class="season-content" id="season-${season}">
+                                                Loading season details...
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <aside class="sidebar">
+                        <div class="ratings-grid">
+                            <div class="rating-item">
+                                <div class="rating-value">${Math.round(content.vote_average * 10)}%</div>
+                                <div class="rating-label">Critics</div>
+                            </div>
+                            <div class="rating-item">
+                                <div class="rating-value">${Math.round(content.popularity)}%</div>
+                                <div class="rating-label">Audience</div>
+                            </div>
+                            <div class="rating-item">
+                                <div class="rating-value">${content.vote_count}</div>
+                                <div class="rating-label">Votes</div>
+                            </div>
+                            <div class="rating-item">
+                                <div class="rating-value">${content.vote_average.toFixed(1)}</div>
+                                <div class="rating-label">Rating</div>
+                            </div>
+                        </div>
+
+                        <div class="metadata-item">
+                            <div class="metadata-label">Status</div>
+                            <div class="metadata-value">${content.status}</div>
+                        </div>
+
+                        <div class="metadata-item">
+                            <div class="metadata-label">Release Dates</div>
+                            <div class="metadata-value">
+                                ${content.release_dates?.results?.find(r => r.iso_3166_1 === 'US')?.release_dates?.map(d => new Date(d.release_date).toLocaleDateString()).join(', ') || new Date(content.release_date).toLocaleDateString()}
+                            </div>
+                        </div>
+
+                        <div class="metadata-item">
+                            <div class="metadata-label">Revenue</div>
+                            <div class="metadata-value">$${(content.revenue || 0).toLocaleString()}</div>
+                        </div>
+
+                        <div class="metadata-item">
+                            <div class="metadata-label">Budget</div>
+                            <div class="metadata-value">$${(content.budget || 0).toLocaleString()}</div>
+                        </div>
+
+                        <div class="metadata-item">
+                            <div class="metadata-label">Original Language</div>
+                            <div class="metadata-value">${content.original_language?.toUpperCase() || 'N/A'}</div>
+                        </div>
+
+                        <div class="metadata-item">
+                            <div class="metadata-label">Production Country</div>
+                            <div class="metadata-value">${content.production_countries?.map(c => c.name).join(', ') || 'N/A'}</div>
+                        </div>
+
+                        <div class="metadata-item">
+                            <div class="metadata-label">Studios</div>
+                            <div class="metadata-value">${content.production_companies?.map(c => c.name).join(', ') || 'N/A'}</div>
+                        </div>
+                    </aside>
+                </div>
+            `;
+        }
+
+        function toggleSeason(seasonNumber) {
+            const content = document.querySelector(`#season-${seasonNumber}`);
+            const wasActive = content.classList.contains('active');
+            
+            // Close all season contents
+            document.querySelectorAll('.season-content').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            // Toggle the clicked season
+            if (!wasActive) {
+                content.classList.add('active');
+            }
+        }
+
+        function showError(message) {
+            const container = document.getElementById('content-container');
+            container.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        async function fetchContentDetails() {
+            try {
+                const contentId = getContentId();
+                const contentType = getContentType();
+                const basePath = getBasePath();
+                const url = `${basePath}/api/${contentType}/${contentId}`;
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const content = await response.json();
+                renderContent(content);
+            } catch (error) {
+                console.error('Fetch error:', error);
+                showError(`Error loading details: ${error.message}`);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderBackButton();
+            fetchContentDetails();
+        });
+    </script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineGet</title>
+    <title>CineSeer</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <style>
         * {
@@ -31,7 +31,7 @@
             font-size: clamp(1.1rem, 3.5vw, 1.75rem);
         }
 
-        .series-container {
+        .media-container {
             display: grid;
             grid-auto-flow: column;
             grid-auto-columns: clamp(180px, 45vw, 17rem);
@@ -42,19 +42,19 @@
             scrollbar-width: none;
             -ms-overflow-style: none;
             -webkit-overflow-scrolling: touch;
-            min-height: 280px; /* Prevent layout shift */
+            min-height: 280px;
         }
 
-        .series-container::-webkit-scrollbar {
+        .media-container::-webkit-scrollbar {
             display: none;
         }
 
-        .series-link {
+        .media-link {
             text-decoration: none;
             color: inherit;
         }
 
-        .series-card {
+        .media-card {
             position: relative;
             border-radius: 0.5rem;
             overflow: hidden;
@@ -84,27 +84,27 @@
         }
 
         @media (hover: hover) {
-            .series-card:hover {
+            .media-card:hover {
                 transform: translateY(-5px);
             }
 
-            .series-card:hover .series-info {
+            .media-card:hover .media-info {
                 transform: translateY(0);
             }
 
-            .series-card:hover .series-image {
+            .media-card:hover .media-image {
                 opacity: 0.7;
             }
         }
 
-        .series-image {
+        .media-image {
             width: 100%;
             height: 100%;
             object-fit: cover;
             transition: opacity 0.3s;
         }
 
-        .series-info {
+        .media-info {
             position: absolute;
             bottom: 0;
             left: 0;
@@ -116,37 +116,37 @@
         }
 
         @media (max-width: 768px) {
-            .series-info {
+            .media-info {
                 background: rgba(15, 23, 42, 0.95);
             }
 
-            .series-overview {
+            .media-overview {
                 -webkit-line-clamp: 2;
             }
 
-            .series-card.active .series-info {
+            .media-card.active .media-info {
                 transform: translateY(0);
             }
 
-            .series-card.active .series-image {
+            .media-card.active .media-image {
                 opacity: 0.7;
             }
         }
 
-        .series-title {
+        .media-title {
             font-size: clamp(0.875rem, 2.5vw, 1.25rem);
             font-weight: bold;
             margin-bottom: 0.25rem;
             color: #f8fafc;
         }
 
-        .series-year {
+        .media-year {
             font-size: clamp(0.75rem, 1.8vw, 0.875rem);
             color: #94a3b8;
             margin-bottom: 0.25rem;
         }
 
-        .series-overview {
+        .media-overview {
             font-size: clamp(0.75rem, 1.8vw, 0.875rem);
             color: #cbd5e1;
             display: -webkit-box;
@@ -154,66 +154,95 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-
-        .series-date {
-            font-size: clamp(0.75rem, 1.8vw, 0.875rem);
-            color: #94a3b8;
-            margin-bottom: 0.25rem;
-        }
     </style>
 </head>
 <body>
-    <h1>New TV Series</h1>
+    <h1>CineSeer</h1>
     
-    <div id="new-series" class="series-container">
+    <h2>Trending TV Shows</h2>
+    <div id="trending-tv" class="media-container">
         <div class="loading">Loading...</div>
     </div>
 
-    <h2>Upcoming TV Series</h2>
-    
-    <div id="upcoming-series" class="series-container">
+    <h2>Trending Movies</h2>
+    <div id="trending-movies" class="media-container">
+        <div class="loading">Loading...</div>
+    </div>
+
+    <h2>Popular TV Shows</h2>
+    <div id="popular-tv" class="media-container">
+        <div class="loading">Loading...</div>
+    </div>
+
+    <h2>Popular Movies</h2>
+    <div id="popular-movies" class="media-container">
+        <div class="loading">Loading...</div>
+    </div>
+
+    <h2>Upcoming Movies</h2>
+    <div id="upcoming-movies" class="media-container">
+        <div class="loading">Loading...</div>
+    </div>
+
+    <h2>Recommended TV Shows</h2>
+    <div id="recommended-tv" class="media-container">
+        <div class="loading">Loading...</div>
+    </div>
+
+    <h2>Recommended Movies</h2>
+    <div id="recommended-movies" class="media-container">
         <div class="loading">Loading...</div>
     </div>
 
     <script>
-        // Get the base URL path for making relative requests
         const getBasePath = () => {
             const pathname = window.location.pathname;
             return pathname === '/' ? '' : pathname;
         };
 
-        // Function to ensure image URLs are properly constructed
-        const getImageUrl = (imageUrl) => {
-            if (!imageUrl) return '';
-            const basePath = getBasePath();
-            const cleanImageUrl = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
-            return `${basePath}/${cleanImageUrl}`;
+        const getImageUrl = (posterPath) => {
+            if (!posterPath) return '';
+            return `https://image.tmdb.org/t/p/w500${posterPath}`;
         };
 
-        // Render functions
-        function renderSeries(container, series) {
-            if (!Array.isArray(series)) {
-                console.error('Invalid series data:', series);
-                showError(container, 'Invalid data format');
+        function renderMedia(container, items, type) {
+            // Check if items exists and is an array
+            if (!items || !Array.isArray(items)) {
+                console.error('Invalid media data:', items);
+                showError(container, 'No content available');
                 return;
             }
 
-            const isUpcoming = container.id === 'upcoming-series';
-            const basePath = getBasePath();
+            // Filter out items without required data
+            const validItems = items.filter(item => {
+                return item && 
+                       (item.title || item.name) && 
+                       item.poster_path && 
+                       (item.release_date || item.first_air_date);
+            });
 
-            container.innerHTML = series.map(show => {
-                const imageUrl = getImageUrl(show.image);
-                console.log('Rendering series with image URL:', imageUrl);
+            if (validItems.length === 0) {
+                showError(container, 'No content available');
+                return;
+            }
+
+            const basePath = getBasePath();
+            container.innerHTML = validItems.slice(0, 20).map(item => {
+                const imageUrl = getImageUrl(item.poster_path);
+                const title = item.title || item.name;
+                const releaseDate = item.release_date || item.first_air_date;
+                const year = releaseDate ? new Date(releaseDate).getFullYear() : 'TBA';
+                // Determine media type based on dates
+                const detailPath = item.release_date ? 'movie' : 'series';
 
                 return `
-                    <a href="${basePath}/series/${show.id}" class="series-link">
-                        <div class="series-card">
-                            <img class="series-image" src="${imageUrl}" alt="${show.name || 'TV Series'}" loading="lazy" onerror="this.style.display='none'">
-                            <div class="series-info">
-                                <div class="series-title">${show.name || 'Untitled'}</div>
-                                <div class="series-year">${show.year || 'TBA'}</div>
-                                ${isUpcoming && show.firstAired ? `<div class="series-date">Premieres: ${show.firstAired}</div>` : ''}
-                                <div class="series-overview">${show.overview || 'No overview available.'}</div>
+                    <a href="${basePath}/${detailPath}/${item.id}" class="media-link">
+                        <div class="media-card">
+                            <img class="media-image" src="${imageUrl}" alt="${title}" loading="lazy" onerror="this.style.display='none'">
+                            <div class="media-info">
+                                <div class="media-title">${title}</div>
+                                <div class="media-year">${year}</div>
+                                <div class="media-overview">${item.overview || 'No overview available.'}</div>
                             </div>
                         </div>
                     </a>
@@ -226,67 +255,48 @@
             container.innerHTML = `<div class="error">${message}</div>`;
         }
 
-        // Data fetching with proper URL handling for proxy support
-        async function fetchData(endpoint, container) {
+        async function fetchData(endpoint, container, type) {
             try {
                 const basePath = getBasePath();
                 const url = `${basePath}/api${endpoint}`;
-                console.log('Fetching from URL:', url);
-                
                 const response = await fetch(url);
-                console.log('Response status:', response.status);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                const jsonResponse = await response.json();
-                console.log('API Response:', jsonResponse);
-                
-                if (jsonResponse.error) {
-                    throw new Error(jsonResponse.error);
+                const data = await response.json();
+                if (!data || !data[type]) {
+                    throw new Error('Invalid response format');
                 }
-                
-                if (!jsonResponse.data) {
-                    throw new Error('No data in response');
-                }
-
-                renderSeries(container, jsonResponse.data);
+                renderMedia(container, data[type], type);
             } catch (error) {
                 console.error('Fetch error:', error);
                 showError(container, `Error loading data: ${error.message}`);
             }
         }
 
-        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM Content Loaded, initializing app...');
-            const newSeriesContainer = document.getElementById('new-series');
-            const upcomingSeriesContainer = document.getElementById('upcoming-series');
-
-            // Log the base path for debugging
-            const basePath = getBasePath();
-            console.log('Base path for requests:', basePath);
-
-            // Fetch data with relative endpoints
-            console.log('Starting data fetches...');
-            fetchData('/series', newSeriesContainer);
-            fetchData('/upcoming-series', upcomingSeriesContainer);
+            // Fetch all media types
+            fetchData('/home', document.getElementById('trending-tv'), 'trending_tv');
+            fetchData('/home', document.getElementById('trending-movies'), 'trending_movies');
+            fetchData('/home', document.getElementById('popular-tv'), 'popular_tv');
+            fetchData('/home', document.getElementById('popular-movies'), 'popular_movies');
+            fetchData('/home', document.getElementById('upcoming-movies'), 'upcoming_movies');
+            fetchData('/home', document.getElementById('recommended-tv'), 'recommended_tv');
+            fetchData('/home', document.getElementById('recommended-movies'), 'recommended_movies');
 
             // Mobile touch handling
             if (window.matchMedia('(max-width: 768px)').matches) {
                 document.addEventListener('click', function(e) {
-                    const card = e.target.closest('.series-card');
+                    const card = e.target.closest('.media-card');
                     if (card) {
-                        // Remove active class from all other cards
-                        document.querySelectorAll('.series-card').forEach(c => {
+                        document.querySelectorAll('.media-card').forEach(c => {
                             if (c !== card) c.classList.remove('active');
                         });
-                        // Toggle active class on clicked card
                         card.classList.toggle('active');
                     } else {
-                        // Close all cards when clicking outside
-                        document.querySelectorAll('.series-card').forEach(c => 
+                        document.querySelectorAll('.media-card').forEach(c => 
                             c.classList.remove('active')
                         );
                     }
