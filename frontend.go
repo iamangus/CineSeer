@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/dustin/go-humanize"
 	"github.com/gofiber/fiber/v2"
 	"log"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"cineseer/components"
 )
 
 var (
@@ -166,23 +166,41 @@ func setupFrontend(app *fiber.App) {
 		log.Printf("Serving index page to %s", c.IP())
 		// Start background caching after serving the page
 		startBackgroundCaching()
-		return c.Render("index", fiber.Map{})
+		c.Response().Header.Set("Content-Type", "text/html; charset=utf-8")
+		return components.Home().Render(c.Context(), c.Response().BodyWriter())
+
 	})
 
 	// Route to serve the series detail page
 	app.Get(basePath+"/series/:id", func(c *fiber.Ctx) error {
-		log.Printf("Serving series detail page for ID %s to %s", c.Params("id"), c.IP())
-		return c.Render("media-detail", fiber.Map{
-			"Path": fmt.Sprintf("api/content/series/%s", c.Params("id")),
-		})
+		idStr := c.Params("id")
+		log.Printf("Serving series detail page for ID %s to %s", idStr, c.IP())
+		id, err := c.ParamsInt("id")
+		if err != nil {
+			return c.Status(400).SendString("Invalid ID")
+		}
+		details, err := get_details_series(id)
+		if err != nil {
+			return c.Status(500).SendString(err.Error())
+		}
+		c.Response().Header.Set("Content-Type", "text/html; charset=utf-8")
+		return components.MediaDetail(detailedContentToProps(details)).Render(c.Context(), c.Response().BodyWriter())
 	})
 
 	// Route to serve the movie detail page
 	app.Get(basePath+"/movie/:id", func(c *fiber.Ctx) error {
-		log.Printf("Serving movie detail page for ID %s to %s", c.Params("id"), c.IP())
-		return c.Render("media-detail", fiber.Map{
-			"Path": fmt.Sprintf("api/content/movie/%s", c.Params("id")),
-		})
+		idStr := c.Params("id")
+		log.Printf("Serving movie detail page for ID %s to %s", idStr, c.IP())
+		id, err := c.ParamsInt("id")
+		if err != nil {
+			return c.Status(400).SendString("Invalid ID")
+		}
+		details, err := get_details_movies(id)
+		if err != nil {
+			return c.Status(500).SendString(err.Error())
+		}
+		c.Response().Header.Set("Content-Type", "text/html; charset=utf-8")
+		return components.MediaDetail(detailedContentToProps(details)).Render(c.Context(), c.Response().BodyWriter())
 	})
 
 	// API routes
@@ -230,7 +248,7 @@ func setupFrontend(app *fiber.App) {
 		}
 
 		// Build HTML for valid items
-		var html strings.Builder
+		mediaCards := make([]components.MediaCardProps, 0)
 		for _, item := range items[:min(len(items), 20)] {
 			if item.Title == "" {
 				item.Title = item.Name
@@ -250,26 +268,21 @@ func setupFrontend(app *fiber.App) {
 					contentType = "series"
 				}
 
-				var buf strings.Builder
-				if err := c.App().Config().Views.Render(&buf, "media-card", fiber.Map{
-					"ID": item.ID,
-					"Title": item.Title,
-					"Year": year,
-					"Overview": item.Overview,
-					"Type": contentType,
-				}); err != nil {
-					log.Printf("Error rendering media card: %v", err)
-					continue
-				}
-				html.WriteString(buf.String())
+				mediaCards = append(mediaCards, components.MediaCardProps{
+					ID:       item.ID,
+					Title:    item.Title,
+					Year:     year,
+					Overview: item.Overview,
+					Type:     contentType,
+				})
 			}
 		}
 
-		if html.Len() == 0 {
+		if len(mediaCards) == 0 {
 			return c.SendString("<div class='error'>No valid content available</div>")
 		}
 
-		return c.SendString(html.String())
+		return components.MediaList(mediaCards).Render(c.Context(), c.Response().BodyWriter())
 	})
 
 	// Image endpoint
@@ -391,26 +404,27 @@ func setupFrontend(app *fiber.App) {
 			})
 		}
 
-		// Format episodes list
-		var episodes strings.Builder
-		for _, ep := range details.Episodes {
-			episodes.WriteString(fmt.Sprintf(`
-				<div class="episode">
-					<div class="episode-number">Episode %d</div>
-					<div class="episode-title">%s</div>
-					<div class="episode-overview">%s</div>
-					<div class="episode-meta">
-						Air Date: %s | Rating: %.1f/10 (%d votes)
-					</div>
-				</div>
-			`, ep.EpisodeNumber, ep.Name, ep.Overview, ep.AirDate, ep.VoteAverage, ep.VoteCount))
+		seasonProps := components.SeasonProps{
+			SeasonNumber: season,
+			Episodes:    make([]components.Episode, len(details.Episodes)),
 		}
 
-		return c.SendString(episodes.String())
+		for i, ep := range details.Episodes {
+			seasonProps.Episodes[i] = components.Episode{
+				EpisodeNumber: ep.EpisodeNumber,
+				Name:         ep.Name,
+				Overview:     ep.Overview,
+				AirDate:      ep.AirDate,
+				VoteAverage:  ep.VoteAverage,
+				VoteCount:    ep.VoteCount,
+			}
+		}
+
+		return components.Season(seasonProps).Render(c.Context(), c.Response().BodyWriter())
 	})
 }
 
-func renderMediaContent(c *fiber.Ctx, content *DetailedContent, contentType string, basePath string) error {
+func detailedContentToProps(content *DetailedContent) components.DetailedContentProps {
 	// Get the title, preferring Title over Name
 	title := content.Title
 	if title == "" {
@@ -431,66 +445,94 @@ func renderMediaContent(c *fiber.Ctx, content *DetailedContent, contentType stri
 		}
 	}
 
-	// Format data for template
-	data := fiber.Map{
-		"id":    content.ID,
-		"title": title,
-		"year":  year,
-		"duration": func() string {
-			if contentType == "movie" {
-				return fmt.Sprintf("%d minutes", content.Runtime)
-			}
-			return fmt.Sprintf("%d Season%s", content.NumberOfSeasons, map[bool]string{true: "s"}[content.NumberOfSeasons != 1])
-		}(),
-		"status":     content.Status,
-		"genres":     strings.Join(func() []string { genres := make([]string, len(content.Genres)); for i, g := range content.Genres { genres[i] = g.Name }; return genres }(), ", "),
-		"genreTags":  strings.Join(func() []string { tags := make([]string, len(content.Genres)); for i, g := range content.Genres { tags[i] = fmt.Sprintf(`<span class="genre-tag">%s</span>`, g.Name) }; return tags }(), ""),
-		"tagline":    content.Tagline,
-		"overview":   content.Overview,
-		"collection": content.BelongsToCollection,
-		"seasons": func() string {
-			if contentType != "series" {
-				return ""
-			}
-			seasons := make([]string, content.NumberOfSeasons)
-			for i := range seasons {
-				seasons[i] = fmt.Sprintf(`
-					<div class="season">
-						<div class="season-header" hx-get="../api/content/series/%d/season/%d" hx-target="#season-%d">
-							Season %d
-						</div>
-						<div class="season-content" id="season-%d">
-							Loading season details...
-						</div>
-					</div>
-				`, content.ID, i+1, i+1, i+1, i+1)
-			}
-			return strings.Join(seasons, "")
-		}(),
-		"voteAverage": int(content.VoteAverage * 10),
-		"popularity":  int(content.Popularity),
-		"voteCount":  content.VoteCount,
-		"rating":     fmt.Sprintf("%.1f", content.VoteAverage),
-		"revenue":    humanize.Comma(content.Revenue),
-		"budget":     humanize.Comma(content.Budget),
-		"language":   strings.ToUpper(content.OriginalLanguage),
-		"countries":  strings.Join(func() []string { countries := make([]string, len(content.ProductionCountries)); for i, c := range content.ProductionCountries { countries[i] = c.Name }; return countries }(), ", "),
-		"studios":    strings.Join(func() []string { studios := make([]string, len(content.ProductionCompanies)); for i, s := range content.ProductionCompanies { studios[i] = s.Name }; return studios }(), ", "),
-		"director":   func() string { for _, c := range content.Credits.Crew { if c.Job == "Director" { return c.Name } }; return "N/A" }(),
-		"screenplay": func() string { for _, c := range content.Credits.Crew { if c.Job == "Screenplay" { return c.Name } }; return "N/A" }(),
-		"producer":   strings.Join(func() []string { producers := []string{}; for _, c := range content.Credits.Crew { if c.Job == "Producer" { producers = append(producers, c.Name) } }; return producers }(), ", "),
-		"keywords":   strings.Join(func() []string { keywords := make([]string, len(content.Keywords.Keywords)); for i, k := range content.Keywords.Keywords { keywords[i] = fmt.Sprintf(`<span class="genre-tag">%s</span>`, k.Name) }; return keywords }(), ""),
-		"basePath":   basePath,
+	// Convert collection if it exists
+	var collection *components.Collection
+	if content.BelongsToCollection != nil {
+		collection = &components.Collection{
+			ID:   content.BelongsToCollection.ID,
+			Name: content.BelongsToCollection.Name,
+		}
 	}
 
-	// Set backdrop path
+	// Convert genres
+	genres := make([]components.Genre, len(content.Genres))
+	for i, g := range content.Genres {
+		genres[i] = components.Genre{Name: g.Name}
+	}
+
+	// Convert production countries
+	countries := make([]components.ProductionCountry, len(content.ProductionCountries))
+	for i, c := range content.ProductionCountries {
+		countries[i] = components.ProductionCountry{Name: c.Name}
+	}
+
+	// Convert production companies
+	companies := make([]components.ProductionCompany, len(content.ProductionCompanies))
+	for i, c := range content.ProductionCompanies {
+		companies[i] = components.ProductionCompany{Name: c.Name}
+	}
+
+	// Convert credits
+	credits := components.Credits{
+		Crew: make([]components.CrewMember, len(content.Credits.Crew)),
+	}
+	for i, c := range content.Credits.Crew {
+		credits.Crew[i] = components.CrewMember{
+			Job:  c.Job,
+			Name: c.Name,
+		}
+	}
+
+	// Convert keywords
+	keywords := components.Keywords{
+		Keywords: make([]components.Keyword, len(content.Keywords.Keywords)),
+	}
+	for i, k := range content.Keywords.Keywords {
+		keywords.Keywords[i] = components.Keyword{Name: k.Name}
+	}
+
+	// Format duration based on content type
+	duration := ""
+	if content.Runtime > 0 {
+		duration = fmt.Sprintf("%d minutes", content.Runtime)
+	} else if content.NumberOfSeasons > 0 {
+		duration = fmt.Sprintf("%d Season%s", content.NumberOfSeasons, map[bool]string{true: "s"}[content.NumberOfSeasons != 1])
+	}
+
+	// Set backdrop path if it exists
+	backdropPath := ""
 	if content.BackdropPath != "" {
-		data["backdrop"] = fmt.Sprintf("../api/image/%d/backdrop", content.ID)
+		backdropPath = fmt.Sprintf("../api/image/%d/backdrop", content.ID)
 	}
 
-	// Add release date to data
-	data["releaseDate"] = releaseDate
+	return components.DetailedContentProps{
+		ID:                  content.ID,
+		Title:              title,
+		Year:               year,
+		Duration:           duration,
+		Status:             content.Status,
+		Genres:             genres,
+		Tagline:            content.Tagline,
+		Overview:           content.Overview,
+		Collection:         collection,
+		VoteAverage:        content.VoteAverage,
+		Popularity:         content.Popularity,
+		VoteCount:          content.VoteCount,
+		Revenue:            content.Revenue,
+		Budget:             content.Budget,
+		OriginalLanguage:   content.OriginalLanguage,
+		ProductionCountries: countries,
+		ProductionCompanies: companies,
+		Credits:            credits,
+		Keywords:           keywords,
+		BackdropPath:       backdropPath,
+		ReleaseDate:        releaseDate,
+		NumberOfSeasons:    content.NumberOfSeasons,
+		ID_str:             fmt.Sprint(content.ID),
+	}
+}
 
-	log.Printf("Rendering content template for %s %d", contentType, content.ID)
-	return c.Render("content-template", data)
+func renderMediaContent(c *fiber.Ctx, content *DetailedContent, contentType string, basePath string) error {
+	c.Response().Header.Set("Content-Type", "text/html; charset=utf-8")
+	return components.MediaDetail(detailedContentToProps(content)).Render(c.Context(), c.Response().BodyWriter())
 }

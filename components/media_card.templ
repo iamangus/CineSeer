@@ -1,0 +1,36 @@
+package components
+
+import "strconv"
+
+type MediaCardProps struct {
+    ID       int
+    Title    string
+    Year     string
+    Overview string
+    Type     string
+}
+
+templ MediaCard(props MediaCardProps) {
+    <a href={ templ.SafeURL("./"+props.Type+"/"+strconv.Itoa(props.ID)) } class="media-link">
+        <div class="media-card">
+            <div class="media-image-container">
+                <div class="media-image-placeholder"></div>
+                <img 
+                    class="media-image" 
+                    src={ "./api/image/"+strconv.Itoa(props.ID)+"/poster" } 
+                    alt={ props.Title } 
+                    loading="lazy" 
+                    onload="this.parentElement.classList.add('loaded')"
+                    onerror="this.parentElement.classList.add('error')"
+                />
+            </div>
+            <div class="media-info">
+                <div class="media-title">{ props.Title }</div>
+                if props.Year != "" {
+                    <div class="media-year">{ props.Year }</div>
+                }
+                <div class="media-overview">{ props.Overview }</div>
+            </div>
+        </div>
+    </a>
+}

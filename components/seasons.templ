@@ -1,0 +1,88 @@
+package components
+
+import "fmt"
+
+type Episode struct {
+    EpisodeNumber int
+    Name          string
+    Overview      string
+    AirDate       string
+    VoteAverage   float64
+    VoteCount     int
+}
+
+type SeasonProps struct {
+    SeasonNumber int
+    Episodes     []Episode
+}
+
+templ Season(props SeasonProps) {
+    <style>
+        .season {
+            margin-bottom: 1rem;
+        }
+
+        .season-header {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .season-header:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .season-content {
+            padding: 1rem;
+        }
+
+        .episode {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .episode-number {
+            font-weight: bold;
+            color: #f8fafc;
+            margin-bottom: 0.5rem;
+        }
+
+        .episode-title {
+            font-size: 1.1rem;
+            color: #f8fafc;
+            margin-bottom: 0.5rem;
+        }
+
+        .episode-overview {
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .episode-meta {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+    </style>
+    <div class="season">
+        <div class="season-header" hx-get={ fmt.Sprintf("../api/content/series/%d/season/%d", props.SeasonNumber) } hx-target={ fmt.Sprintf("#season-%d", props.SeasonNumber) }>
+            Season { fmt.Sprint(props.SeasonNumber) }
+        </div>
+        <div class="season-content" id={ fmt.Sprintf("season-%d", props.SeasonNumber) }>
+            for _, episode := range props.Episodes {
+                <div class="episode">
+                    <div class="episode-number">Episode { fmt.Sprint(episode.EpisodeNumber) }</div>
+                    <div class="episode-title">{ episode.Name }</div>
+                    <div class="episode-overview">{ episode.Overview }</div>
+                    <div class="episode-meta">
+                        Air Date: { episode.AirDate } | Rating: { fmt.Sprintf("%.1f/10", episode.VoteAverage) } ({ fmt.Sprint(episode.VoteCount) } votes)
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}

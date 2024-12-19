@@ -1,0 +1,437 @@
+package components
+
+import "fmt"
+import "strings"
+
+type DetailedContentProps struct {
+    ID                   int
+    Title               string
+    Year                string
+    Duration            string
+    Status              string
+    Genres              []Genre
+    Tagline             string
+    Overview            string
+    Collection          *Collection
+    VoteAverage         float64
+    Popularity          float64
+    VoteCount           int
+    Revenue            int64
+    Budget             int64
+    OriginalLanguage    string
+    ProductionCountries []ProductionCountry
+    ProductionCompanies []ProductionCompany
+    Credits             Credits
+    Keywords            Keywords
+    BackdropPath        string
+    ReleaseDate         string
+    NumberOfSeasons     int
+    ID_str              string
+}
+
+type Genre struct {
+    Name string
+}
+
+type Collection struct {
+    ID   int
+    Name string
+}
+
+type ProductionCountry struct {
+    Name string
+}
+
+type ProductionCompany struct {
+    Name string
+}
+
+type Credits struct {
+    Crew []CrewMember
+}
+
+type CrewMember struct {
+    Job  string
+    Name string
+}
+
+type Keywords struct {
+    Keywords []Keyword
+}
+
+type Keyword struct {
+    Name string
+}
+
+templ MediaDetail(props DetailedContentProps) {
+    @Layout("Details - CineSeer") {
+        <script>
+            document.body.classList.add('detail-page');
+        </script>
+        <div id="back-button-container">
+            <a href="../" class="back-button">← Back to Home</a>
+        </div>
+        @DetailedContent(props)
+        if props.BackdropPath != "" {
+            <script>
+                document.body.style.backgroundImage = `url("${props.BackdropPath}")`;
+            </script>
+        }
+    }
+}
+
+templ DetailedContent(props DetailedContentProps) {
+    <style>
+        .content-detail {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            grid-template-areas: 
+                "main sidebar"
+                "details details";
+            gap: 2rem;
+        }
+
+        .main-content {
+            grid-area: main;
+        }
+
+        .sidebar {
+            grid-area: sidebar;
+        }
+
+        .additional-details {
+            grid-area: details;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .content-header {
+            display: grid;
+            grid-template-columns: minmax(200px, 300px) 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .sidebar {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            height: fit-content;
+        }
+
+        .ratings-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .rating-item {
+            text-align: center;
+        }
+
+        .rating-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .rating-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .metadata-item {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 1rem;
+        }
+
+        .metadata-label {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .metadata-value {
+            font-size: 0.9rem;
+            text-align: right;
+        }
+
+        .collection-banner {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+        }
+
+        .collection-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .collection-image {
+            width: 48px;
+            height: 48px;
+            border-radius: 0.25rem;
+            object-fit: cover;
+        }
+
+        .view-button {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .view-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .watch-trailer {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .watch-trailer:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        @media (max-width: 1200px) {
+            .content-detail {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .content-poster {
+            width: 100%;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            aspect-ratio: 3/4;
+        }
+
+        .content-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .content-info h1 {
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            color: #f8fafc;
+            margin-bottom: 1rem;
+        }
+
+        .content-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .content-meta span:not(:last-child)::after {
+            content: "•";
+            margin-left: 1rem;
+        }
+
+        .content-tagline {
+            font-style: italic;
+            color: #94a3b8;
+            margin-bottom: 1rem;
+        }
+
+        .content-overview {
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .genre-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .genre-tag {
+            background: #1e293b;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .detail-section {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .detail-section h2 {
+            font-size: 1.1rem;
+            color: #f8fafc;
+            margin-bottom: 1rem;
+        }
+
+        .detail-section p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+    <div class="content-detail">
+        <div class="main-content">
+            <div class="content-header">
+                <div class="content-poster">
+                    <img src={ fmt.Sprintf("../api/image/%d/poster", props.ID) } alt={ props.Title }/>
+                </div>
+                <div class="content-info">
+                    <h1>{ props.Title } { props.Year }</h1>
+                    
+                    <div class="content-meta">
+                        <span>{ props.Duration }</span>
+                        <span>{ props.Status }</span>
+                        <span>{ strings.Join(func() []string { genres := make([]string, len(props.Genres)); for i, g := range props.Genres { genres[i] = g.Name }; return genres }(), ", ") }</span>
+                    </div>
+
+                    <button class="watch-trailer">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Watch Trailer
+                    </button>
+
+                    <div class="genre-tags">
+                        for _, genre := range props.Genres {
+                            <span class="genre-tag">{ genre.Name }</span>
+                        }
+                    </div>
+
+                    if props.Tagline != "" {
+                        <div class="content-tagline">{ props.Tagline }</div>
+                    }
+
+                    <div class="content-overview">{ props.Overview }</div>
+                </div>
+            </div>
+
+            if props.Collection != nil {
+                <div class="collection-banner">
+                    <div class="collection-info">
+                        <img src={ fmt.Sprintf("../api/image/%d/poster", props.Collection.ID) } alt={ props.Collection.Name } class="collection-image"/>
+                        <span>{ props.Collection.Name }</span>
+                    </div>
+                    <button class="view-button">View</button>
+                </div>
+            }
+        </div>
+
+        <aside class="sidebar">
+            <div class="ratings-grid">
+                <div class="rating-item">
+                    <div class="rating-value">{ fmt.Sprintf("%.0f%%", props.VoteAverage*10) }</div>
+                    <div class="rating-label">Critics</div>
+                </div>
+                <div class="rating-item">
+                    <div class="rating-value">{ fmt.Sprintf("%.0f%%", props.Popularity) }</div>
+                    <div class="rating-label">Audience</div>
+                </div>
+                <div class="rating-item">
+                    <div class="rating-value">{ fmt.Sprint(props.VoteCount) }</div>
+                    <div class="rating-label">Votes</div>
+                </div>
+                <div class="rating-item">
+                    <div class="rating-value">{ fmt.Sprintf("%.1f", props.VoteAverage) }</div>
+                    <div class="rating-label">Rating</div>
+                </div>
+            </div>
+
+            <div class="metadata-item">
+                <div class="metadata-label">Status</div>
+                <div class="metadata-value">{ props.Status }</div>
+            </div>
+
+            <div class="metadata-item">
+                <div class="metadata-label">Release Date</div>
+                <div class="metadata-value">{ props.ReleaseDate }</div>
+            </div>
+
+            <div class="metadata-item">
+                <div class="metadata-label">Revenue</div>
+                <div class="metadata-value">${ fmt.Sprint(props.Revenue) }</div>
+            </div>
+
+            <div class="metadata-item">
+                <div class="metadata-label">Budget</div>
+                <div class="metadata-value">${ fmt.Sprint(props.Budget) }</div>
+            </div>
+
+            <div class="metadata-item">
+                <div class="metadata-label">Original Language</div>
+                <div class="metadata-value">{ strings.ToUpper(props.OriginalLanguage) }</div>
+            </div>
+
+            <div class="metadata-item">
+                <div class="metadata-label">Production Country</div>
+                <div class="metadata-value">{ strings.Join(func() []string { countries := make([]string, len(props.ProductionCountries)); for i, c := range props.ProductionCountries { countries[i] = c.Name }; return countries }(), ", ") }</div>
+            </div>
+
+            <div class="metadata-item">
+                <div class="metadata-label">Studios</div>
+                <div class="metadata-value">{ strings.Join(func() []string { studios := make([]string, len(props.ProductionCompanies)); for i, s := range props.ProductionCompanies { studios[i] = s.Name }; return studios }(), ", ") }</div>
+            </div>
+        </aside>
+
+        <div class="additional-details">
+            <div class="detail-section">
+                <h2>Director</h2>
+                <p>{ func() string { for _, c := range props.Credits.Crew { if c.Job == "Director" { return c.Name } }; return "N/A" }() }</p>
+            </div>
+
+            <div class="detail-section">
+                <h2>Screenplay</h2>
+                <p>{ func() string { for _, c := range props.Credits.Crew { if c.Job == "Screenplay" { return c.Name } }; return "N/A" }() }</p>
+            </div>
+
+            <div class="detail-section">
+                <h2>Producer</h2>
+                <p>{ strings.Join(func() []string { producers := []string{}; for _, c := range props.Credits.Crew { if c.Job == "Producer" { producers = append(producers, c.Name) } }; return producers }(), ", ") }</p>
+            </div>
+
+            <div class="detail-section">
+                <h2>Keywords</h2>
+                <div class="genre-tags">
+                    for _, keyword := range props.Keywords.Keywords {
+                        <span class="genre-tag">{ keyword.Name }</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}

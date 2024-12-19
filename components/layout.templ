@@ -1,0 +1,309 @@
+package components
+
+templ Layout(title string) {
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>{ title }</title>
+        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+        <script>
+            // Mobile touch handling
+            document.addEventListener('DOMContentLoaded', function() {
+                if (window.matchMedia('(max-width: 768px)').matches) {
+                    document.addEventListener('click', function(e) {
+                        const card = e.target.closest('.media-card');
+                        if (card) {
+                            document.querySelectorAll('.media-card').forEach(c => {
+                                if (c !== card) c.classList.remove('active');
+                            });
+                            card.classList.toggle('active');
+                        } else {
+                            document.querySelectorAll('.media-card').forEach(c => 
+                                c.classList.remove('active')
+                            );
+                        }
+                    });
+                }
+            });
+        </script>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: system-ui, -apple-system, sans-serif;
+                background: #0f172a;
+                color: #e2e8f0;
+                padding: clamp(0.5rem, 3vw, 2rem);
+            }
+
+            h1, h2 {
+                margin-bottom: clamp(0.67rem, 2.7vw, 1.33rem);
+                text-align: left;
+                color: #f8fafc;
+                font-size: clamp(1.25rem, 4vw, 2rem);
+            }
+
+            h2 {
+                margin-top: clamp(1.33rem, 4vw, 2rem);
+                font-size: clamp(1.1rem, 3.5vw, 1.75rem);
+            }
+
+            .media-container {
+                display: grid;
+                grid-auto-flow: column;
+                grid-auto-columns: clamp(126px, 31.5vw, 12rem);
+                gap: clamp(0.5rem, 2vw, 1.5rem);
+                overflow-x: auto;
+                padding: clamp(0.5rem, 2vw, 1rem);
+                scroll-snap-type: x mandatory;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+                -webkit-overflow-scrolling: touch;
+                min-height: 280px;
+            }
+
+            .media-container::-webkit-scrollbar {
+                display: none;
+            }
+
+            .loading {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                height: 280px;
+                color: #94a3b8;
+            }
+
+            .error {
+                color: #ef4444;
+                padding: 1rem;
+                background: rgba(239, 68, 68, 0.1);
+                border-radius: 0.5rem;
+                margin: 1rem 0;
+            }
+
+            header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 2rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid #1e293b;
+            }
+
+            .home-link {
+                text-decoration: none;
+                color: inherit;
+                transition: color 0.2s;
+            }
+
+            .home-link:hover {
+                color: #60a5fa;
+            }
+
+            nav {
+                display: flex;
+                gap: 1.5rem;
+            }
+
+            nav a {
+                color: #94a3b8;
+                text-decoration: none;
+                transition: color 0.2s;
+                font-size: 1.1rem;
+            }
+
+            nav a:hover {
+                color: #60a5fa;
+            }
+
+            main {
+                scroll-padding-top: 2rem;
+            }
+
+            /* Media Card Styles */
+            .media-link {
+                text-decoration: none;
+                color: inherit;
+            }
+
+            .media-card {
+                position: relative;
+                border-radius: 0.5rem;
+                overflow: hidden;
+                scroll-snap-align: start;
+                background: #1e293b;
+                transition: transform 0.2s;
+                aspect-ratio: 3/4;
+                height: auto;
+                max-height: clamp(196px, 42vh, 280px);
+            }
+
+            @media (hover: hover) {
+                .media-card:hover {
+                    transform: translateY(-5px);
+                }
+
+                .media-card:hover .media-info {
+                    transform: translateY(0);
+                }
+
+                .media-card:hover .media-image {
+                    opacity: 0.7;
+                }
+            }
+
+            .media-image-container {
+                position: relative;
+                width: 100%;
+                height: 100%;
+                background: #1e293b;
+            }
+
+            .media-image-container::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, #1e293b 25%, #2d3c50 50%, #1e293b 75%);
+                background-size: 200% 100%;
+                animation: loading 1.5s infinite;
+            }
+
+            .media-image-container.loaded::before {
+                display: none;
+            }
+
+            .media-image-container.error::before {
+                animation: none;
+                background: #1e293b;
+            }
+
+            .media-image {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                transition: opacity 0.3s;
+                opacity: 0;
+            }
+
+            .media-image-container.loaded .media-image {
+                opacity: 1;
+            }
+
+            @keyframes loading {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+
+            .media-info {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                padding: clamp(0.5rem, 2vw, 1rem);
+                background: rgba(15, 23, 42, 0.9);
+                transform: translateY(100%);
+                transition: transform 0.3s;
+            }
+
+            @media (max-width: 768px) {
+                .media-info {
+                    background: rgba(15, 23, 42, 0.95);
+                }
+
+                .media-overview {
+                    -webkit-line-clamp: 2;
+                }
+
+                .media-card.active .media-info {
+                    transform: translateY(0);
+                }
+
+                .media-card.active .media-image {
+                    opacity: 0.7;
+                }
+            }
+
+            .media-title {
+                font-size: clamp(0.875rem, 2.5vw, 1.25rem);
+                font-weight: bold;
+                margin-bottom: 0.25rem;
+                color: #f8fafc;
+            }
+
+            .media-year {
+                font-size: clamp(0.75rem, 1.8vw, 0.875rem);
+                color: #94a3b8;
+                margin-bottom: 0.25rem;
+            }
+
+            .media-overview {
+                font-size: clamp(0.75rem, 1.8vw, 0.875rem);
+                color: #cbd5e1;
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            /* Detail Page Styles */
+            body.detail-page {
+                background-size: cover;
+                background-position: center;
+                background-attachment: fixed;
+                position: relative;
+            }
+
+            body.detail-page::before {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(15, 23, 42, 0.85);
+                z-index: 0;
+            }
+
+            .back-button {
+                display: inline-block;
+                margin-bottom: 2rem;
+                color: #94a3b8;
+                text-decoration: none;
+                font-size: 0.9rem;
+                position: relative;
+                z-index: 1;
+            }
+
+            .back-button:hover {
+                color: #e2e8f0;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1><a href="/" class="home-link">CineSeer</a></h1>
+            <nav>
+                <a href="#trending-tv">TV Shows</a>
+                <a href="#trending-movies">Movies</a>
+            </nav>
+        </header>
+        <main>
+            { children... }
+        </main>
+    </body>
+    </html>
+}

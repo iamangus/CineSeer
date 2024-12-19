@@ -1,0 +1,61 @@
+package components
+
+templ Home() {
+    @Layout("CineSeer") {
+        <section id="trending-tv">
+            <h2>Trending TV Shows</h2>
+            <div class="media-container" hx-get="./api/home?type=trending_tv" hx-trigger="load">
+                <div class="loading">Loading...</div>
+            </div>
+        </section>
+
+        <section id="trending-movies">
+            <h2>Trending Movies</h2>
+            <div class="media-container" hx-get="./api/home?type=trending_movies" hx-trigger="load">
+                <div class="loading">Loading...</div>
+            </div>
+        </section>
+
+        <section id="popular-tv">
+            <h2>Popular TV Shows</h2>
+            <div class="media-container" hx-get="./api/home?type=popular_tv" hx-trigger="load">
+                <div class="loading">Loading...</div>
+            </div>
+        </section>
+
+        <section id="popular-movies">
+            <h2>Popular Movies</h2>
+            <div class="media-container" hx-get="./api/home?type=popular_movies" hx-trigger="load">
+                <div class="loading">Loading...</div>
+            </div>
+        </section>
+
+        <section id="upcoming-movies">
+            <h2>Upcoming Movies</h2>
+            <div class="media-container" hx-get="./api/home?type=upcoming_movies" hx-trigger="load">
+                <div class="loading">Loading...</div>
+            </div>
+        </section>
+
+        <section id="recommended-tv">
+            <h2>Recommended TV Shows</h2>
+            <div class="media-container" hx-get="./api/home?type=recommended_tv" hx-trigger="load">
+                <div class="loading">Loading...</div>
+            </div>
+        </section>
+
+        <section id="recommended-movies">
+            <h2>Recommended Movies</h2>
+            <div class="media-container" hx-get="./api/home?type=recommended_movies" hx-trigger="load">
+                <div class="loading">Loading...</div>
+            </div>
+        </section>
+    }
+}
+
+// Component for rendering a list of media cards
+templ MediaList(items []MediaCardProps) {
+    for _, item := range items {
+        @MediaCard(item)
+    }
+}

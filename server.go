@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/template/html/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -231,13 +230,8 @@ func main() {
 	}
 	log.Printf("TMDB API Key loaded (length: %d)", len(apiKey))
 
-	// Initialize template engine
-	engine := html.New("./views", ".html")
-
 	// Create fiber app
-	app := fiber.New(fiber.Config{
-		Views: engine,
-	})
+	app := fiber.New()
 
 	// Get base path from environment variable, default to "/"
 	basePath := os.Getenv("BASE_PATH")
