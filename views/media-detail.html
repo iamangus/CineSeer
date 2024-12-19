@@ -83,11 +83,25 @@
             z-index: 1;
             display: grid;
             grid-template-columns: 1fr 350px;
+            grid-template-areas: 
+                "main sidebar"
+                "details details";
             gap: 2rem;
         }
 
         .main-content {
-            flex: 1;
+            grid-area: main;
+        }
+
+        .sidebar {
+            grid-area: sidebar;
+        }
+
+        .additional-details {
+            grid-area: details;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
         }
 
         .content-header {
@@ -401,32 +415,6 @@
                             </div>
                         ` : ''}
 
-                        <div class="content-details">
-                            <div class="detail-section">
-                                <h2>Director</h2>
-                                <p>${content.credits?.crew?.find(c => c.job === 'Director')?.name || 'N/A'}</p>
-                            </div>
-
-                            <div class="detail-section">
-                                <h2>Screenplay</h2>
-                                <p>${content.credits?.crew?.find(c => c.job === 'Screenplay')?.name || 'N/A'}</p>
-                            </div>
-
-                            <div class="detail-section">
-                                <h2>Producer</h2>
-                                <p>${content.credits?.crew?.filter(c => c.job === 'Producer').map(p => p.name).join(', ') || 'N/A'}</p>
-                            </div>
-                        </div>
-
-                        <div class="detail-section">
-                            <h2>Keywords</h2>
-                            <div class="genre-tags">
-                                ${content.keywords?.keywords?.map(keyword => `
-                                    <span class="genre-tag">${keyword.name}</span>
-                                `).join('') || 'No keywords available'}
-                            </div>
-                        </div>
-
                         ${type === 'series' ? `
                             <div class="detail-section">
                                 <h2>Seasons</h2>
@@ -503,6 +491,32 @@
                             <div class="metadata-value">${content.production_companies?.map(c => c.name).join(', ') || 'N/A'}</div>
                         </div>
                     </aside>
+
+                    <div class="additional-details">
+                        <div class="detail-section">
+                            <h2>Director</h2>
+                            <p>${content.credits?.crew?.find(c => c.job === 'Director')?.name || 'N/A'}</p>
+                        </div>
+
+                        <div class="detail-section">
+                            <h2>Screenplay</h2>
+                            <p>${content.credits?.crew?.find(c => c.job === 'Screenplay')?.name || 'N/A'}</p>
+                        </div>
+
+                        <div class="detail-section">
+                            <h2>Producer</h2>
+                            <p>${content.credits?.crew?.filter(c => c.job === 'Producer').map(p => p.name).join(', ') || 'N/A'}</p>
+                        </div>
+
+                        <div class="detail-section">
+                            <h2>Keywords</h2>
+                            <div class="genre-tags">
+                                ${content.keywords?.keywords?.map(keyword => `
+                                    <span class="genre-tag">${keyword.name}</span>
+                                `).join('') || 'No keywords available'}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
         }
