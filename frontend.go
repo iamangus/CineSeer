@@ -11,53 +11,55 @@ import (
 var (
 	cacheMutex       sync.Mutex
 	lastCacheTime    time.Time
-	cachedSeriesIds  = make(map[int]bool)
+	cachedMediaIds   = make(map[int]bool)
 	cacheInProgress  bool
 )
 
-// cacheSeriesContent handles caching all content for a single series
-func cacheSeriesContent(series SimplifiedSeries, wg *sync.WaitGroup) {
+// cacheMediaContent handles caching all content for a single media item (movie or series)
+func cacheMediaContent(content MediaContent, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	// Check if this series has already been cached
+	// Check if this content has already been cached
 	cacheMutex.Lock()
-	if cachedSeriesIds[series.ID] {
+	if cachedMediaIds[content.ID] {
 		cacheMutex.Unlock()
 		return
 	}
 	cacheMutex.Unlock()
 
 	// Cache poster image
-	if series.Image != "" {
-		err := cacheImage(series.Image, generateCacheFilename(series.Image, series.ID))
+	if content.PosterPath != "" {
+		err := cacheImage(content.PosterPath, fmt.Sprint(content.ID), "poster")
 		if err != nil {
-			log.Printf("Error caching poster for series %d: %v", series.ID, err)
+			log.Printf("Error caching poster for content %d: %v", content.ID, err)
 		}
 	}
 
-	// Get and cache background image
-	backgroundURL, err := GetSeriesBackground(series.ID)
-	if err != nil {
-		log.Printf("Error getting background for series %d: %v", series.ID, err)
-	} else if backgroundURL != "" {
-		err = cacheImage(backgroundURL, fmt.Sprintf("%d-background.jpg", series.ID))
+	// Cache backdrop image
+	if content.BackdropPath != "" {
+		err := cacheImage(content.BackdropPath, fmt.Sprint(content.ID), "backdrop")
 		if err != nil {
-			log.Printf("Error caching background for series %d: %v", series.ID, err)
+			log.Printf("Error caching backdrop for content %d: %v", content.ID, err)
 		}
 	}
 
-	// Get and cache detailed series info
-	_, err = GetSeriesInfo(series.ID)
+	// Get and cache detailed info
+	var err error
+	if isMovie(content) {
+		_, err = get_details_movies(content.ID)
+	} else {
+		_, err = get_details_series(content.ID)
+	}
 	if err != nil {
-		log.Printf("Error caching series info for series %d: %v", series.ID, err)
+		log.Printf("Error caching content info for ID %d: %v", content.ID, err)
 	}
 
-	// Mark this series as cached
+	// Mark this content as cached
 	cacheMutex.Lock()
-	cachedSeriesIds[series.ID] = true
+	cachedMediaIds[content.ID] = true
 	cacheMutex.Unlock()
 
-	log.Printf("Cached all content for series %d (%s)", series.ID, series.Name)
+	log.Printf("Cached all content for ID %d (%s)", content.ID, content.Title)
 }
 
 // startBackgroundCaching initiates the caching process for all series content
@@ -78,20 +80,44 @@ func startBackgroundCaching() {
 
 			log.Printf("Starting background caching process")
 			
-			// Get all series data
-			allSeries, err := GetSeriesData()
+			// Get homepage data for caching
+			homePageData, err := getHomePageData()
 			if err != nil {
-				log.Printf("Error getting series data for caching: %v", err)
+				log.Printf("Error getting homepage data for caching: %v", err)
 				return
 			}
 
 			// Use a WaitGroup to track all goroutines
 			var wg sync.WaitGroup
 
-			// Start a goroutine for each series
-			for _, series := range allSeries {
+			// Cache trending TV shows
+			for _, content := range homePageData.TrendingTV {
 				wg.Add(1)
-				go cacheSeriesContent(series, &wg)
+				go cacheMediaContent(content, &wg)
+			}
+
+			// Cache trending movies
+			for _, content := range homePageData.TrendingMovies {
+				wg.Add(1)
+				go cacheMediaContent(content, &wg)
+			}
+
+			// Cache popular TV shows
+			for _, content := range homePageData.PopularTV {
+				wg.Add(1)
+				go cacheMediaContent(content, &wg)
+			}
+
+			// Cache popular movies
+			for _, content := range homePageData.PopularMovies {
+				wg.Add(1)
+				go cacheMediaContent(content, &wg)
+			}
+
+			// Cache upcoming movies
+			for _, content := range homePageData.UpcomingMovies {
+				wg.Add(1)
+				go cacheMediaContent(content, &wg)
 			}
 
 			// Wait for all caching operations to complete

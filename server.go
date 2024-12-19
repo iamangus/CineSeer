@@ -1,8 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -238,11 +242,98 @@ func main() {
 		Views: engine,
 	})
 
-	// Setup frontend routes from frontend.go
-	setupFrontend(app)
+	// Get base path from environment variable, default to "/"
+	basePath := os.Getenv("BASE_PATH")
+	if basePath == "" {
+		basePath = "/"
+	}
+	// Ensure base path starts with / and doesn't end with /
+	if !strings.HasPrefix(basePath, "/") {
+		basePath = "/" + basePath
+	}
+	basePath = strings.TrimSuffix(basePath, "/")
+	
+	// Setup frontend routes with base path
+	app.Static(basePath+"/static", "./static")
+	
+	// Main route serves the template and starts background caching
+	app.Get(basePath+"/", func(c *fiber.Ctx) error {
+		log.Printf("Serving index page to %s", c.IP())
+		// Start background caching after serving the page
+		startBackgroundCaching()
+		return c.Render("index", fiber.Map{})
+	})
+
+	// Route to serve the series detail page
+	app.Get(basePath+"/series/:id", func(c *fiber.Ctx) error {
+		log.Printf("Serving series detail page for ID %s to %s", c.Params("id"), c.IP())
+		return c.Render("media-detail", fiber.Map{})
+	})
+
+	// Route to serve the movie detail page
+	app.Get(basePath+"/movie/:id", func(c *fiber.Ctx) error {
+		log.Printf("Serving movie detail page for ID %s to %s", c.Params("id"), c.IP())
+		return c.Render("media-detail", fiber.Map{})
+	})
 
 	// API routes
-	api := app.Group("/api")
+	api := app.Group(basePath + "/api")
+
+	// Image endpoint
+	api.Get("/image/:id/:type", func(c *fiber.Ctx) error {
+		contentID := c.Params("id")
+		imgType := c.Params("type") // poster or backdrop
+		
+		if contentID == "" {
+			return c.Status(400).JSON(fiber.Map{
+				"error": "Content ID is required",
+			})
+		}
+
+		// Use ID-based filename
+		cacheFilename := fmt.Sprintf("%s-%s.jpg", contentID, imgType)
+		cachePath := filepath.Join("static", "cache", cacheFilename)
+
+		// Check if image exists in cache
+		if _, err := os.Stat(cachePath); os.IsNotExist(err) {
+			// Get content details to get image path
+			var imagePath string
+			id, _ := strconv.Atoi(contentID)
+
+			// Try movie first
+			if details, err := get_details_movies(id); err == nil {
+				if imgType == "poster" {
+					imagePath = details.PosterPath
+				} else {
+					imagePath = details.BackdropPath
+				}
+			} else {
+				// Try series if movie fails
+				if details, err := get_details_series(id); err == nil {
+					if imgType == "poster" {
+						imagePath = details.PosterPath
+					} else {
+						imagePath = details.BackdropPath
+					}
+				} else {
+					return c.Status(404).JSON(fiber.Map{
+						"error": "Content not found",
+					})
+				}
+			}
+
+			// Download and cache the image
+			if err := cacheImage(imagePath, contentID, imgType); err != nil {
+				log.Printf("Error caching image: %v", err)
+				return c.Status(500).JSON(fiber.Map{
+					"error": "Failed to cache image",
+				})
+			}
+		}
+
+		// Serve the cached image
+		return c.SendFile(cachePath)
+	})
 
 	// Home page data
 	api.Get("/home", func(c *fiber.Ctx) error {

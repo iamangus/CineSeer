@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"log"
 )
 
@@ -137,20 +138,22 @@ func makeRequest(endpoint string) ([]byte, error) {
 	return body, nil
 }
 
-// Image caching functions
-func generateCacheFilename(imageURL string, seriesID int) string {
-	ext := filepath.Ext(imageURL)
-	if ext == "" {
-		ext = ".jpg"
-	}
-	return fmt.Sprintf("%d-poster%s", seriesID, ext)
-}
-
-func cacheImage(imageURL string, filename string) error {
-	if !filepath.IsAbs(imageURL) {
-		imageURL = fmt.Sprintf("%s%s", imageBaseURL, imageURL)
+// Image caching function
+func cacheImage(imagePath string, contentID string, imgType string) error {
+	if imagePath == "" {
+		return fmt.Errorf("image path is empty")
 	}
 
+	// Ensure path starts with /
+	if !strings.HasPrefix(imagePath, "/") {
+		imagePath = "/" + imagePath
+	}
+
+	// Construct full URL
+	imageURL := imageBaseURL + imagePath
+
+	// Use ID-based filename
+	cacheFilename := fmt.Sprintf("%s-%s.jpg", contentID, imgType)
 	resp, err := http.Get(imageURL)
 	if err != nil {
 		return err
@@ -161,7 +164,7 @@ func cacheImage(imageURL string, filename string) error {
 		return fmt.Errorf("bad status: %s", resp.Status)
 	}
 
-	cachePath := filepath.Join("static", "cache", filename)
+	cachePath := filepath.Join("static", "cache", cacheFilename)
 	out, err := os.Create(cachePath)
 	if err != nil {
 		return err

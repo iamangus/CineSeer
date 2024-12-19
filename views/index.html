@@ -6,9 +6,9 @@
     <title>CineSeer</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
-        const getImageUrl = (posterPath) => {
+        const getImageUrl = (posterPath, contentId) => {
             if (!posterPath) return '';
-            return `https://image.tmdb.org/t/p/w500${posterPath}`;
+            return `./api/image/${contentId}/poster`;
         };
 
         function renderMedia(container, items) {
@@ -38,9 +38,9 @@
                 const detailPath = item.release_date ? 'movie' : 'series';
 
                 return `
-                    <a href="${detailPath}/${item.id}" class="media-link">
+                    <a href="./${detailPath}/${item.id}" class="media-link">
                         <div class="media-card">
-                            <img class="media-image" src="${imageUrl}" alt="${title}" loading="lazy" onerror="this.style.display='none'">
+                            <img class="media-image" src="${getImageUrl(item.poster_path, item.id)}" alt="${title}" loading="lazy" onerror="this.style.display='none'">
                             <div class="media-info">
                                 <div class="media-title">${title}</div>
                                 <div class="media-year">${year}</div>
@@ -59,7 +59,7 @@
 
         async function fetchData(endpoint, container, type) {
             try {
-                const response = await fetch(`api/home?type=${type}`);
+                const response = await fetch(`./api/home?type=${type}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
