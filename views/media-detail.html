@@ -49,33 +49,6 @@
             color: #e2e8f0;
         }
 
-        .processing-badge {
-            display: inline-flex;
-            align-items: center;
-            background: rgba(99, 102, 241, 0.2);
-            color: #818cf8;
-            padding: 0.25rem 0.75rem;
-            border-radius: 1rem;
-            font-size: 0.8rem;
-            margin-bottom: 1rem;
-        }
-
-        .processing-badge::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            background: currentColor;
-            border-radius: 50%;
-            margin-right: 0.5rem;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.4; }
-            100% { opacity: 1; }
-        }
-
         .content-detail {
             max-width: 1400px;
             margin: 0 auto;
@@ -375,7 +348,6 @@
                                 <img src="${getImageUrl(content.poster_path)}" alt="${content.title || content.name}">
                             </div>
                             <div class="content-info">
-                                <div class="processing-badge">Processing</div>
                                 <h1>${content.title || content.name} (${new Date(content.release_date || content.first_air_date).getFullYear()})</h1>
                                 
                                 <div class="content-meta">
